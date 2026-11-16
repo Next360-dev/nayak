@@ -195,6 +195,7 @@ def _admin(user: dict) -> dict:
 def _leader(user: dict) -> dict:
     me = user["username"].lower()
     return {
+        "title": user.get("leader_title"),
         "news": _news_block(user, statewide_view=user["role"] == "minister"),
         "shares": _shares_block(me),
         "team": user_repository.list_staff_of(me),
@@ -208,7 +209,7 @@ def _staff(user: dict) -> dict:
         "news": _news_block(user, statewide_view=False),
         "shares": _shares_block(user["username"].lower()),
         "board": (board_repository.summary(boss["username"].lower(), user["username"].lower(), briefing_today()) if boss else None),
-        "leader": ({"username": boss["username"], "role": boss["role"],
+        "leader": ({"username": boss["username"], "role": boss["role"], "title": boss.get("leader_title"),
                     "name": boss["politician_name"] or boss["username"]} if boss else None),
     }
 

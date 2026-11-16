@@ -308,7 +308,7 @@ def fetch_constituency_rss(client: httpx.Client, constituency: str, te_keyword: 
     return records
 
 # People we follow by NAME (their news is tagged to the given constituency). (constituency, Telugu name)
-WATCHED_PEOPLE = [("Malkajgiri", "ఈటల రాజేందర్")]
+WATCHED_PEOPLE = [("Malkajgiri Lok Sabha", "ఈటల రాజేందర్")]
 
 
 def collect_google_rss(max_workers: int = 12) -> List[Dict[str, Any]]:

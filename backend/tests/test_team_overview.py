@@ -34,6 +34,7 @@ def client():
     cur.execute((pathlib.Path(__file__).parents[1] / "migrations" / "005_audit_and_password_age.sql").read_text())  # password age + audit log
     cur.execute((pathlib.Path(__file__).parents[1] / "migrations" / "006_alerts_feedback.sql").read_text())  # contacts + alerts
     cur.execute((pathlib.Path(__file__).parents[1] / "migrations" / "007_team_board.sql").read_text())  # team board
+    cur.execute((pathlib.Path(__file__).parents[1] / "migrations" / "008_leader_title.sql").read_text())  # leader title
     cur.execute((MIG / "001_auth_and_shares.sql").read_text())
     cur.execute((MIG / "003_mobile.sql").read_text())
     cur.execute((MIG / "004_share_pair_guard.sql").read_text())

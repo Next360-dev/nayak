@@ -371,21 +371,25 @@ def run_quick_refresh(constituency: str, district: str | None = None) -> Dict[st
     A handful of web requests (seconds), instead of the full run over all 119 constituencies, 33 districts and the publishers.
     Goes through the same de-duplication and storage as the full run, so the result looks exactly the same."""
     import httpx
+    from constituency_mappings import area_districts, area_members
     from file1_google_rss import CONSTITUENCY_TELUGU, HEADERS, WATCHED_PEOPLE, fetch_constituency_rss, fetch_district_rss
 
     t0 = datetime.now(timezone.utc)
-    te_kw = next((k for k, canon in CONSTITUENCY_TELUGU.items() if canon == constituency), None)
+    members = area_members(constituency) or [constituency]          # an MP's area searches every one of its constituencies
+    districts = area_districts(constituency) if area_members(constituency) else ([district] if district and district not in ("All", "Statewide") else [])
     records: List[Dict[str, Any]] = []
-    with httpx.Client(headers=HEADERS, follow_redirects=True) as client, ThreadPoolExecutor(max_workers=6) as ex:
+    with httpx.Client(headers=HEADERS, follow_redirects=True) as client, ThreadPoolExecutor(max_workers=8) as ex:
         jobs = []
-        if te_kw:
-            jobs.append(ex.submit(fetch_constituency_rss, client, constituency, te_kw))
+        for m in members:
+            te_kw = next((k for k, canon in CONSTITUENCY_TELUGU.items() if canon == m), None)
+            if te_kw:
+                jobs.append(ex.submit(fetch_constituency_rss, client, m, te_kw))
         for canon, name_kw in WATCHED_PEOPLE:
             if canon == constituency:
                 jobs.append(ex.submit(fetch_constituency_rss, client, canon, name_kw))
-        if district and district not in ("All", "Statewide"):
-            jobs.append(ex.submit(fetch_district_rss, client, district, "en"))
-            jobs.append(ex.submit(fetch_district_rss, client, district, "te"))
+        for d in districts:
+            jobs.append(ex.submit(fetch_district_rss, client, d, "en"))
+            jobs.append(ex.submit(fetch_district_rss, client, d, "te"))
         for job in as_completed(jobs):
             try:
                 records.extend(job.result())

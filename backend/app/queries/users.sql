@@ -13,7 +13,9 @@ SELECT u.username, u.role,
        u.password_hash,
        u.mla_username,
        m.role,
-       u.password_changed_at
+       u.password_changed_at,
+       COALESCE(m.leader_title, u.leader_title),
+       COALESCE(m.leader_party, u.leader_party)
 FROM users u
 LEFT JOIN users m ON u.role = 'staff' AND LOWER(m.username) = LOWER(u.mla_username)
 WHERE LOWER(u.username) = %s AND u.is_active = TRUE;
@@ -39,7 +41,7 @@ SELECT u.username, u.role, u.politician_name, u.constituency_name, u.district_na
        (SELECT COUNT(*) FROM users s
          WHERE s.role = 'staff' AND s.is_active = TRUE AND LOWER(s.mla_username) = LOWER(u.username)) AS staff_count,
        COALESCE(sr.n_new, 0), COALESCE(sr.n_seen, 0), COALESCE(sr.n_acting, 0), COALESCE(sr.n_done, 0),
-       sr.oldest_new, sr.last_action
+       sr.oldest_new, sr.last_action, u.leader_title
 FROM users u
 LEFT JOIN (
   SELECT LOWER(r.recipient) AS who,

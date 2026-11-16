@@ -96,7 +96,7 @@ def enrich_articles(raw_rows, *, constituency=None, politician=None, news_scope=
     Returns list of enriched dicts.
     """
     from data.constituency_mappings import (
-        get_canonical_district, detect_all_mlas_in_text, get_mla_for_constituency
+        get_canonical_district, detect_all_mlas_in_text, get_mla_for_constituency, area_members
     )
     from deduplication import deduplicate_sources, normalize_title_for_comparison, fuzzy_title_similarity
 
@@ -119,10 +119,14 @@ def enrich_articles(raw_rows, *, constituency=None, politician=None, news_scope=
         detected_names = [m["leader_name"] for m in detected_mlas]
 
         if constituency and constituency not in ("All", "All Assembly Constituencies", "All Constituencies", "Statewide"):
-            target_mla = get_mla_for_constituency(constituency)
+            members = area_members(constituency)
+            # An area (an MP's seat): label each story with ITS OWN member constituency; stories about the leader themselves stay at area level.
+            own = next((c for c in [row["constituency"], *art_consts, *civic_consts] if members and c in members), None) if members else None
+            place = own or constituency
+            target_mla = get_mla_for_constituency(place)
             target_mla_name = target_mla["name"] if target_mla else ""
-            const = constituency
-            dist = get_canonical_district(constituency)
+            const = place
+            dist = get_canonical_district(place) if (own or not members) else ""
             politician_name = target_mla_name if target_mla_name else "Constituency Representative"
             news_type = "civic"
             is_mla_news = bool(target_mla_name and (target_mla_name in full_text or any(m.get("leader_name") == target_mla_name for m in detected_mlas)))
@@ -309,7 +313,7 @@ def get_news_feed(
     if is_mla:
         if user_constituency and user_constituency not in ("All", "All Assembly Constituencies", "Statewide"):
             constituency = user_constituency
-        if user_district and not district:
+        if user_district and user_district not in ('All', 'All Districts') and not district:
             district = user_district
         if user_politician and user_politician not in admin_politicians and not politician:
             politician = user_politician

@@ -424,7 +424,7 @@ LOCAL_POLITICIAN_ALIASES = {
     'sunitha laxma reddy': 'Narsapur', 'సునీతా లక్ష్మారెడ్డి': 'Narsapur',
     'madhavaram krishna rao': 'Kukatpally', 'మాధవరం కృష్ణారావు': 'Kukatpally',
     'marri rajasekhar reddy': 'Malkajgiri', 'మర్రి రాజశేఖర్ రెడ్డి': 'Malkajgiri',
-    'etala rajender': 'Malkajgiri', 'eatala rajender': 'Malkajgiri', 'etela rajender': 'Malkajgiri', 'ఈటల రాజేందర్': 'Malkajgiri',
+    'etala rajender': 'Malkajgiri Lok Sabha', 'eatala rajender': 'Malkajgiri Lok Sabha', 'etela rajender': 'Malkajgiri Lok Sabha', 'ఈటల రాజేందర్': 'Malkajgiri Lok Sabha',
     'malla reddy': 'Medchal', 'మల్లారెడ్డి': 'Medchal', 'చామకూర మల్లారెడ్డి': 'Medchal',
     'kuna pandu vivekanand': 'Quthbullapur', 'వివేకానంద గౌడ్': 'Quthbullapur',
     'bandaru lakshma reddy': 'Uppal', 'బండారు లక్ష్మారెడ్డి': 'Uppal',
@@ -1734,3 +1734,21 @@ def get_constituencies_for_district(district: str) -> List[str]:
         if d_name.lower() in dist_lower or dist_lower in d_name.lower():
             return list(consts)
     return []
+
+
+# ── Areas bigger than one assembly constituency (an MP's Lok Sabha seat) ─────────────────────────────────────
+# A leader whose constituency_name is an area sees the news of ALL its member constituencies. Names must match ALL_119_MLAS.
+AREAS = {
+    "Malkajgiri Lok Sabha": ["Medchal", "Malkajgiri", "Quthbullapur", "Kukatpally", "Uppal", "L.B. Nagar", "Secunderabad Cantt. (SC)"],
+}
+
+
+def area_members(name):
+    """The member constituencies of an area, or None when `name` is an ordinary constituency."""
+    return AREAS.get(name)
+
+
+def area_districts(name):
+    """The districts the members belong to (for the web search), in a stable order."""
+    members = AREAS.get(name) or []
+    return list(dict.fromkeys(d for m in members for d in [get_canonical_district(m)] if d and d != "Statewide"))

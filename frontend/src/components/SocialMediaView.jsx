@@ -217,11 +217,11 @@ export default function SocialMediaView({
         <div className="min-w-0">
           <p className="flex flex-wrap items-center gap-2 text-lg font-semibold tracking-tight">
             {mlaInfo.name}
-            {mlaInfo.party && <Badge variant="secondary">{mlaInfo.party}</Badge>}
+            {(currentUser?.leader_party || mlaInfo.party) && <Badge variant="secondary">{currentUser?.leader_party || mlaInfo.party}</Badge>}
           </p>
           <p className="mt-0.5 flex items-center gap-1.5 text-sm text-muted-foreground">
             <MapPin className="size-3.5" aria-hidden="true" />
-            {mlaInfo.constituency}{mlaInfo.district && mlaInfo.district !== 'Statewide' ? ` · ${mlaInfo.district}` : ''}
+            {mlaInfo.constituency}{mlaInfo.district && mlaInfo.district !== 'Statewide' && currentUser?.leader_title !== 'MP' ? ` · ${mlaInfo.district}` : ''}
           </p>
         </div>
         {canScrape && (

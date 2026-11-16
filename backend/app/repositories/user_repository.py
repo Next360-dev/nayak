@@ -33,6 +33,8 @@ def _row_to_user(row) -> dict:
         "mla_username": row[6],
         "password_changed_at": row[8] if len(row) > 8 else None,
         "boss_role": row[7],
+        "leader_title": row[9] if len(row) > 9 else None,     # "MP" etc.; None means the role's normal title
+        "leader_party": row[10] if len(row) > 10 else None,
     }
 
 
@@ -202,7 +204,7 @@ def leaders_overview() -> list[dict]:
             "username": r[0], "role": r[1], "politician_name": r[2], "constituency_name": r[3],
             "district_name": r[4], "last_login": _iso(r[5]), "staff_count": r[6],
             "shares": {"new": r[7], "seen": r[8], "acting": r[9], "done": r[10]},
-            "oldest_unseen_share": _iso(r[11]), "last_share_action": _iso(r[12]),
+            "oldest_unseen_share": _iso(r[11]), "last_share_action": _iso(r[12]), "leader_title": r[13],
         }
         for r in rows
     ]

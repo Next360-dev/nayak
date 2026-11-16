@@ -87,6 +87,8 @@ def public_user(user: dict) -> dict:
         "politician_name": user["politician_name"],
         "constituency_name": user["constituency_name"],
         "district_name": user["district_name"],
+        "leader_title": user.get("leader_title"),
+        "leader_party": user.get("leader_party"),
         # scoped roles only ever see their own constituency's data
         "scoped": is_scoped(user),
         "can_share": role != "admin",      # the master admin only watches

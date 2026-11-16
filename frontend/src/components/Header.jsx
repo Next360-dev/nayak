@@ -10,6 +10,7 @@ export default function Header({ currentUser, onLogout, t, unreadCount = 0, onOp
   const place = currentUser?.constituency_name && currentUser.constituency_name !== 'All' ? currentUser.constituency_name : '';
   const subtitle = role === 'admin' ? tr('sub.admin')
     : role === 'minister' ? tr('sub.minister')
+    : role === 'mla' && currentUser?.leader_title === 'MP' ? (place ? tr('sub.mp', { place }) : tr('sub.mpNoPlace'))
     : role === 'mla' ? (place ? tr('sub.mla', { place }) : tr('sub.mlaNoPlace'))
     : role === 'staff' ? (place ? tr('sub.staff', { place }) : tr('sub.staffNoPlace'))
     : t.portalSubtitle;

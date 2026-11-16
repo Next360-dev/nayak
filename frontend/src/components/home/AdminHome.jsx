@@ -131,7 +131,7 @@ export default function AdminHome({ data, onRefresh, onOpenUsers, onOpenInbox, o
                   <TableRow key={l.username}>
                     <TableCell>
                       <div className="font-medium">{l.politician_name || l.username}</div>
-                      <Badge variant="secondary" className="mt-1">{l.role === 'minister' ? tr('role.minister') : tr('role.mla')}</Badge>
+                      <Badge variant="secondary" className="mt-1">{l.role === 'minister' ? tr('role.minister') : l.leader_title === 'MP' ? tr('role.mp') : tr('role.mla')}</Badge>
                     </TableCell>
                     <TableCell className="text-muted-foreground">{place}</TableCell>
                     <TableCell>

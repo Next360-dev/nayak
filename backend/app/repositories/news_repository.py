@@ -19,6 +19,16 @@ _SQL_COUNT_STATEWIDE = get_query("news.sql", "count_statewide_articles")
 # Internal helpers (kept here to avoid circular imports with deduplication.py)
 # ─────────────────────────────────────────────────────────────────────────────
 
+
+def _constituency_variants(constituency: str, const_clean: str) -> list[str]:
+    """Spellings to match for one constituency; an AREA (an MP's seat) expands to all of its member constituencies."""
+    from data.constituency_mappings import area_members
+    names = [constituency, const_clean, f"{const_clean} (ST)", f"{const_clean} (SC)"]
+    for member in area_members(constituency) or []:
+        clean = re.sub(r"\s*\((SC|ST)\)", "", member).strip()
+        names += [member, clean, f"{clean} (ST)", f"{clean} (SC)"]
+    return list(dict.fromkeys(names))
+
 def _build_time_clauses(period, date_range, specific_date, search):
     """Returns (clauses_list, params_list) for time & keyword filters."""
     clauses, params = [], []
@@ -85,7 +95,7 @@ def fetch_articles(
             scope_clauses.append("(is_statewide = TRUE OR district = 'Statewide' OR constituency = 'Statewide')")
         elif constituency and constituency not in ("All", "All Assembly Constituencies", "All Constituencies", "Statewide"):
             const_clean = re.sub(r"\s*\((SC|ST)\)", "", constituency).strip()
-            c_variants = list(dict.fromkeys([constituency, const_clean, f"{const_clean} (ST)", f"{const_clean} (SC)"]))
+            c_variants = _constituency_variants(constituency, const_clean)
             mla_data = get_mla_for_constituency(constituency) or {}
             mla_name = mla_data.get("name", "")
             pol = politician if (politician and politician not in ("All", "All Leaders", "State Administration", "State Master Administrator", "Master Admin", "All 119 MLAs & CM", "Constituency Representative")) else mla_name
@@ -201,7 +211,7 @@ def fetch_scope_counts(
         mla_name = ""
         if constituency and constituency not in ("All", "All Assembly Constituencies", "All Constituencies", "Statewide"):
             const_clean = re.sub(r"\s*\((SC|ST)\)", "", constituency).strip()
-            c_variants = list(dict.fromkeys([constituency, const_clean, f"{const_clean} (ST)", f"{const_clean} (SC)"]))
+            c_variants = _constituency_variants(constituency, const_clean)
             mla_data = get_mla_for_constituency(constituency) or {}
             mla_name = mla_data.get("name", "")
             parent_dist = get_canonical_district(constituency)
