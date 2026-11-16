@@ -1,0 +1,342 @@
+import React, { useMemo } from 'react';
+import { ChevronLeft, ChevronRight, Filter, Info, Search, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
+import { classifyArticleSentiment, isStatewideArticle } from '../utils/constants';
+import NewsCard from './NewsCard';
+import SocialMediaView from './SocialMediaView';
+import RefreshNews from './RefreshNews';
+
+export default function NewsFeed({
+  articles, isLoading, error, currentUser, currentLang, period, onPeriodChange,
+  historyDateRange, onHistoryDateRangeChange, historySpecificDate, onHistorySpecificDateChange,
+  newsScope, onNewsScopeChange, scopeCounts, currentPage = 1, pagination = null, onPageChange = () => {},
+  onOpenOutletsModal, onShare, t, selectedConstituency, selectedPolitician, allPoliticians,
+  searchKeyword = '', setSearchKeyword = () => {}, onSearch = () => {}, onOpenFilters, activeFilterCount = 0, onRefreshed,
+}) {
+  const te = currentLang === 'te';
+
+  const activeConstituency = (currentUser && currentUser.scoped && currentUser.constituency_name)
+    ? currentUser.constituency_name
+    : (selectedConstituency && selectedConstituency !== 'All' && selectedConstituency !== 'All Assembly Constituencies' && selectedConstituency !== 'Statewide' ? selectedConstituency : null);
+
+  const activeMlaName = useMemo(() => {
+    if (currentUser && currentUser.scoped && currentUser.politician_name) {
+      return currentUser.politician_name;
+    }
+    if (selectedPolitician && selectedPolitician !== 'All' && !['All 119 MLAs & CM', 'All Leaders', 'State Administration', 'State Master Administrator', 'Master Admin', 'Constituency Representative'].includes(selectedPolitician)) {
+      return selectedPolitician;
+    }
+    if (activeConstituency && allPoliticians && allPoliticians.length > 0) {
+      const cleanActive = activeConstituency.replace(/\s*\((SC|ST)\)/i, '').trim().toLowerCase();
+      const pol = allPoliticians.find(p => {
+        const pConst = (p.constituency_name || '').replace(/\s*\((SC|ST)\)/i, '').trim().toLowerCase();
+        return pConst === cleanActive;
+      });
+      if (pol) return pol.name;
+    }
+    return null;
+  }, [currentUser, selectedPolitician, activeConstituency, allPoliticians]);
+
+  const cName = activeConstituency
+    ? activeConstituency
+    : ((currentUser && currentUser.scoped)
+      ? currentUser.constituency_name
+      : 'Telangana State');
+
+
+  // Classify articles with sentiment & statewide scope
+  const categorizedArticles = useMemo(() => {
+    return (articles || []).map(art => ({
+      ...art,
+      sentiment: art.sentiment || classifyArticleSentiment(art),
+      is_statewide: art.is_statewide !== undefined ? art.is_statewide : isStatewideArticle(art)
+    }));
+  }, [articles]);
+
+  // Direct constituency news first, then chronological
+  const sortedArticles = useMemo(() => {
+    return [...categorizedArticles].sort((a, b) => {
+      const aDirect = !a.is_district_update ? 1 : 0;
+      const bDirect = !b.is_district_update ? 1 : 0;
+      if (aDirect !== bDirect) return bDirect - aDirect;
+
+      const timeA = a.date_time ? new Date(a.date_time).getTime() : 0;
+      const timeB = b.date_time ? new Date(b.date_time).getTime() : 0;
+      return timeB - timeA;
+    });
+  }, [categorizedArticles]);
+
+  // Compute live counts for all 6 buttons directly from DB scopeCounts (with fallback to local articles)
+  const computedCounts = useMemo(() => {
+    let positive = 0;
+    let negative = 0;
+    let statewide = 0;
+    let civic = 0;
+
+    for (const art of sortedArticles) {
+      if (art.sentiment === 'positive') positive++;
+      if (art.sentiment === 'negative') negative++;
+      if (art.is_statewide || art.district_name === 'Statewide') statewide++;
+      if (art.news_type === 'civic' || art.is_civic) civic++;
+    }
+
+    return {
+      all: scopeCounts?.all !== undefined ? scopeCounts.all : sortedArticles.length,
+      positive: scopeCounts?.positive !== undefined ? scopeCounts.positive : positive,
+      negative: scopeCounts?.negative !== undefined ? scopeCounts.negative : negative,
+      statewide: scopeCounts?.statewide !== undefined ? scopeCounts.statewide : (statewide || 0),
+      civic: scopeCounts?.civic !== undefined ? scopeCounts.civic : civic,
+      social: scopeCounts?.social !== undefined ? scopeCounts.social : 0
+    };
+  }, [sortedArticles, scopeCounts]);
+
+  // Filter displayed articles according to active scope
+  const displayedArticles = useMemo(() => {
+    if (newsScope === 'social') {
+      return []; // Managed by SocialMediaView
+    }
+    if (newsScope === 'positive') {
+      const pos = sortedArticles.filter(a => a.sentiment === 'positive');
+      return pos.length > 0 ? pos : sortedArticles;
+    }
+    if (newsScope === 'negative') {
+      const neg = sortedArticles.filter(a => a.sentiment === 'negative');
+      return neg.length > 0 ? neg : sortedArticles;
+    }
+    if (newsScope === 'statewide') {
+      const sw = sortedArticles.filter(a => a.is_statewide || a.district_name === 'Statewide' || a.constituency_name === 'Statewide');
+      return sw.length > 0 ? sw : sortedArticles;
+    }
+    if (newsScope === 'civic') {
+      return sortedArticles.filter(a => a.news_type === 'civic' || a.is_civic);
+    }
+    return sortedArticles;
+  }, [sortedArticles, newsScope]);
+
+  // Total count for current active scope
+  const activeScopeTotal = useMemo(() => {
+    if (newsScope === 'statewide') return scopeCounts?.statewide ?? (pagination?.total_records || displayedArticles.length);
+    if (newsScope === 'all') return scopeCounts?.all ?? (pagination?.total_records || displayedArticles.length);
+    if (newsScope === 'positive') return scopeCounts?.positive ?? displayedArticles.length;
+    if (newsScope === 'negative') return scopeCounts?.negative ?? displayedArticles.length;
+    if (newsScope === 'civic') return scopeCounts?.civic ?? displayedArticles.length;
+    if (newsScope === 'social') return scopeCounts?.social ?? 0;
+    return pagination?.total_records || displayedArticles.length;
+  }, [newsScope, scopeCounts, pagination, displayedArticles.length]);
+
+  // Smart page number window for pagination
+  const pageNumbers = useMemo(() => {
+    if (!pagination || pagination.total_pages <= 1) return [];
+    const total = pagination.total_pages;
+    const current = currentPage || 1;
+    const delta = 2;
+
+    if (total <= 7) {
+      return Array.from({ length: total }, (_, i) => i + 1);
+    }
+
+    const pages = [];
+    const left = Math.max(2, current - delta);
+    const right = Math.min(total - 1, current + delta);
+
+    pages.push(1);
+    if (left > 2) pages.push('...');
+    for (let i = left; i <= right; i++) {
+      pages.push(i);
+    }
+    if (right < total - 1) pages.push('...');
+    pages.push(total);
+
+    return pages;
+  }, [pagination, currentPage]);
+
+
+  const totalCount = displayedArticles.length;
+  const allAreDistrictUpdates = sortedArticles.length > 0 && sortedArticles.every((a) => a.is_district_update);
+  const fallbackDist = allAreDistrictUpdates ? (sortedArticles[0].district_name || 'District') : '';
+  const countLabel = isLoading && totalCount === 0 ? '…' : activeScopeTotal.toLocaleString();
+
+  const SCOPES = [
+    { id: 'all', label: te ? 'అన్నీ' : 'All', count: computedCounts.all },
+    { id: 'positive', label: te ? 'సానుకూలం' : 'Positive', count: computedCounts.positive },
+    { id: 'negative', label: te ? 'ప్రతికూలం' : 'Negative', count: computedCounts.negative },
+    { id: 'statewide', label: te ? 'రాష్ట్రవ్యాప్తం' : 'Statewide', count: computedCounts.statewide },
+    { id: 'civic', label: te ? 'ప్రజా సమస్యలు' : 'Civic', count: computedCounts.civic },
+    { id: 'social', label: te ? 'సోషల్ మీడియా' : 'Social media', count: computedCounts.social },
+  ];
+  const PRESETS = [
+    { range: 'all', label: te ? 'అన్నీ' : 'All past' },
+    { range: '24h', label: te ? '24 గంటలు' : '24 hours' },
+    { range: '3d', label: te ? '3 రోజులు' : '3 days' },
+    { range: '7d', label: te ? '7 రోజులు' : '7 days' },
+    { range: '14d', label: te ? '14 రోజులు' : '14 days' },
+  ];
+  const pill = (active) => cn('inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-md px-3 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-ring',
+    active ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-secondary hover:text-foreground');
+
+  const pageText = pagination && pagination.total_pages > 1
+    ? (te ? `పేజీ ${currentPage} / ${pagination.total_pages}` : `Page ${currentPage} of ${pagination.total_pages}`) : null;
+  const subtitle = [cName, pageText].filter(Boolean).join(' · ');
+
+  const emptyCopy = (() => {
+    if (period === 'history') {
+      return historySpecificDate
+        ? { title: te ? `${historySpecificDate} తేదీకి వార్తలు లేవు` : `No stories on ${historySpecificDate}`, body: te ? 'మరొక తేదీని లేదా కాల వ్యవధిని ఎంచుకోండి.' : 'Pick another date or a longer range.' }
+        : { title: t.noNewsTitle, body: t.noNewsSubtitle };
+    }
+    if (newsScope === 'positive') return { title: te ? 'ఈరోజు సానుకూల వార్తలు లేవు' : 'No positive stories today', body: te ? 'ఆర్కైవ్‌లో గత వార్తలు చూడండి.' : 'The archive has earlier stories.' };
+    if (newsScope === 'negative') return { title: te ? 'ఈరోజు ప్రతికూల వార్తలు లేవు' : 'No negative stories today', body: te ? 'ఆర్కైవ్‌లో గత వార్తలు చూడండి.' : 'The archive has earlier stories.' };
+    return { title: t.noTodayNewsTitle || 'No stories yet today', body: te ? 'వార్తలు కొన్ని గంటలకోసారి వస్తాయి. ఆర్కైవ్‌లో గత వార్తలు చూడండి.' : 'New stories arrive every few hours. The archive has earlier ones.' };
+  })();
+
+  const rangeText = pagination
+    ? `${(pagination.offset || 0) + 1}–${Math.min((pagination.offset || 0) + displayedArticles.length, activeScopeTotal)}`
+    : '';
+
+  return (
+    <section className="space-y-4">
+      {/* Title row */}
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 className="text-2xl font-semibold tracking-tight" id="feed-title">
+            {newsScope === 'social' ? (te ? 'సోషల్ మీడియా' : 'Social media') : period === 'today' ? (te ? 'నేటి వార్తలు' : "Today's news") : (te ? 'వార్తల ఆర్కైవ్' : 'News archive')}
+            {newsScope !== 'social' && <span className="ml-3 align-middle text-base font-medium text-muted-foreground" id="news-count-badge">{countLabel} {t.storiesSuffix || 'stories'}</span>}
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground" id="feed-subtitle">{subtitle}</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <RefreshNews onDone={onRefreshed} showLatest={false} />
+        <div className="inline-flex rounded-md bg-secondary p-0.5" id="top-nav-switcher" role="group" aria-label={te ? 'కాలం' : 'Period'}>
+          {[['today', t.viewToday || 'Today', 'view-btn-today'], ['history', t.viewHistory || 'Archive', 'view-btn-history']].map(([id, label, bid]) => (
+            <button key={id} type="button" id={bid} data-view={id} aria-pressed={period === id} onClick={() => onPeriodChange(id)}
+                    className={cn('h-8 rounded px-3.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-ring',
+                      period === id ? 'bg-card text-foreground' : 'text-muted-foreground hover:text-foreground')}>
+              {label}
+            </button>
+          ))}
+        </div>
+        </div>
+      </div>
+
+      {/* Search + filters */}
+      {newsScope !== 'social' && (
+      <form className="flex gap-2" role="search" onSubmit={(e) => { e.preventDefault(); onSearch(); }}>
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+          <Input id="filter-search" type="search" className="h-10 bg-card pl-9" value={searchKeyword} onChange={(e) => setSearchKeyword(e.target.value)}
+                 placeholder={te ? 'నీరు, రోడ్డు, ఆసుపత్రి…' : 'Water, road, hospital…'} aria-label={te ? 'వార్తలు శోధించండి' : 'Search stories'} />
+        </div>
+        <Button type="submit" className="h-10">{te ? 'వెతకండి' : 'Search'}</Button>
+        {onOpenFilters && (
+          <Button type="button" variant="outline" className="h-10 bg-card" onClick={onOpenFilters} id="btn-banner-filter-menu" aria-label={te ? 'ఫిల్టర్లు' : 'Filters'}>
+            <Filter /> <span className="max-sm:hidden">{te ? 'ఫిల్టర్లు' : 'Filters'}</span>
+            {activeFilterCount > 0 && <span className="ml-0.5 rounded bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">{activeFilterCount}</span>}
+          </Button>
+        )}
+      </form>
+      )}
+
+      {/* Scope tabs */}
+      <div className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1" id="news-scope-toggle-bar" role="group" aria-label={te ? 'వార్తల రకం' : 'News type'}>
+        {SCOPES.map((sc) => (
+          <button key={sc.id} type="button" id={`scope-btn-${sc.id}`} data-scope={sc.id} aria-pressed={newsScope === sc.id}
+                  className={pill(newsScope === sc.id)} onClick={() => onNewsScopeChange(sc.id)}
+                  title={(sc.id === 'positive' || sc.id === 'negative') && activeConstituency && activeMlaName ? activeMlaName : undefined}>
+            <span id={`scope-label-${sc.id}`}>{sc.label}</span>
+            {sc.id !== 'social' && <span id={`scope-badge-${sc.id}`} className={cn('text-xs tabular-nums', newsScope === sc.id ? 'text-primary-foreground/75' : 'text-muted-foreground')}>{sc.count}</span>}
+          </button>
+        ))}
+      </div>
+
+      {/* Archive tools */}
+      {period === 'history' && (
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-lg border bg-card px-4 py-3" id="history-toolbar">
+          <div className="flex items-center gap-2">
+            <label htmlFor="history-specific-date" className="text-sm font-medium">{te ? 'తేదీ' : 'Date'}</label>
+            <Input type="date" id="history-specific-date" className="h-9 w-auto" value={historySpecificDate} max={new Date().toISOString().split('T')[0]}
+                   onChange={(e) => onHistorySpecificDateChange(e.target.value)} />
+            {historySpecificDate && (
+              <Button type="button" size="sm" variant="ghost" onClick={() => onHistoryDateRangeChange('all')}><X /> {te ? 'తొలగించు' : 'Clear'}</Button>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-1" id="history-presets-group" role="group" aria-label={te ? 'త్వరిత ఎంపికలు' : 'Quick ranges'}>
+            {PRESETS.map((pr) => (
+              <button key={pr.range} type="button" data-range={pr.range} aria-pressed={!historySpecificDate && historyDateRange === pr.range}
+                      className={pill(!historySpecificDate && historyDateRange === pr.range)} onClick={() => onHistoryDateRangeChange(pr.range)}>{pr.label}</button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Stories */}
+      {newsScope === 'social' ? (
+        <SocialMediaView activeConstituency={activeConstituency} activeMlaName={activeMlaName} period={period} currentLang={currentLang} currentUser={currentUser} t={t} />
+      ) : (
+        <div id="news-cards-container" className="space-y-4">
+          {!isLoading && !error && allAreDistrictUpdates && (
+            <p className="flex items-start gap-2 rounded-lg border bg-secondary/60 px-4 py-3 text-sm text-muted-foreground">
+              <Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+              <span>{te ? `ఈ నియోజకవర్గానికి ప్రత్యేక వార్తలు లేవు, అందుకే ${fallbackDist} జిల్లా వార్తలు చూపిస్తున్నాం.` : `No stories for this constituency itself, so these are from ${fallbackDist} district.`}</span>
+            </p>
+          )}
+
+          {isLoading && (
+            <div className="divide-y rounded-lg border bg-card" aria-busy="true">
+              <p className="sr-only" role="status">{te ? 'వార్తలు లోడ్ అవుతున్నాయి' : 'Loading stories'}</p>
+              {[0, 1, 2, 3].map((i) => (
+                <div key={i} className="space-y-2.5 px-5 py-5"><Skeleton className="h-3 w-48" /><Skeleton className="h-5 w-4/5" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-2/3" /></div>
+              ))}
+            </div>
+          )}
+
+          {!isLoading && error && (
+            <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p>
+          )}
+
+          {!isLoading && !error && displayedArticles.length === 0 && (
+            <div className="rounded-lg border bg-card px-6 py-14 text-center">
+              <p className="text-base font-semibold">{emptyCopy.title}</p>
+              <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">{emptyCopy.body}</p>
+              {period === 'today' && (
+                <Button type="button" variant="outline" className="mt-5" id="btn-empty-go-history" onClick={() => onPeriodChange('history')}>{t.browseHistoryBtn || 'Browse the archive'}</Button>
+              )}
+            </div>
+          )}
+
+          {!isLoading && !error && displayedArticles.length > 0 && (
+            <div className="divide-y overflow-hidden rounded-lg border bg-card">
+              {displayedArticles.map((art) => (
+                <NewsCard key={art.id} art={art} currentLang={currentLang} t={t} onOpenOutletsModal={onOpenOutletsModal} onShare={onShare} />
+              ))}
+            </div>
+          )}
+
+          {!isLoading && !error && displayedArticles.length > 0 && pagination && pagination.total_pages > 1 && (
+            <nav className="flex flex-wrap items-center justify-between gap-3" id="feed-pagination-bar" aria-label={te ? 'పేజీలు' : 'Pages'}>
+              <p className="text-sm text-muted-foreground">
+                {te ? `${rangeText} / ${activeScopeTotal.toLocaleString()}` : `Showing ${rangeText} of ${activeScopeTotal.toLocaleString()}`}
+              </p>
+              <div className="flex items-center gap-1">
+                <Button type="button" variant="outline" size="sm" id="pagination-prev-btn" disabled={currentPage <= 1 || isLoading} onClick={() => onPageChange(currentPage - 1)}>
+                  <ChevronLeft /> {te ? 'మునుపటి' : 'Previous'}
+                </Button>
+                {pageNumbers.map((p, idx) => (p === '...'
+                  ? <span key={`e-${idx}`} className="px-1 text-muted-foreground" aria-hidden="true">…</span>
+                  : <button key={`p-${p}`} type="button" id={`pagination-page-${p}`} disabled={p === currentPage || isLoading} aria-current={p === currentPage ? 'page' : undefined}
+                            className={cn('inline-flex size-8 items-center justify-center rounded-md text-sm font-medium tabular-nums focus-visible:outline-2 focus-visible:outline-ring',
+                              p === currentPage ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-secondary')}
+                            onClick={() => onPageChange(p)}>{p}</button>))}
+                <Button type="button" variant="outline" size="sm" id="pagination-next-btn" disabled={currentPage >= pagination.total_pages || isLoading} onClick={() => onPageChange(currentPage + 1)}>
+                  {te ? 'తదుపరి' : 'Next'} <ChevronRight />
+                </Button>
+              </div>
+            </nav>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
