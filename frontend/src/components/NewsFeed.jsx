@@ -168,8 +168,8 @@ export default function NewsFeed({
     { id: 'social', label: te ? 'సోషల్ మీడియా' : 'Social media', count: computedCounts.social },
   ];
   const PRESETS = [
-    { range: 'all', label: te ? 'అన్నీ' : 'All past' },
-    { range: '24h', label: te ? '24 గంటలు' : '24 hours' },
+    { range: 'all', label: te ? 'అన్ని పాత వార్తలు' : 'All older' },
+    { range: '48h', label: te ? '24–48 గంటలు' : '24–48 hours' },
     { range: '3d', label: te ? '3 రోజులు' : '3 days' },
     { range: '7d', label: te ? '7 రోజులు' : '7 days' },
     { range: '14d', label: te ? '14 రోజులు' : '14 days' },
@@ -179,7 +179,8 @@ export default function NewsFeed({
 
   const pageText = pagination && pagination.total_pages > 1
     ? (te ? `పేజీ ${currentPage} / ${pagination.total_pages}` : `Page ${currentPage} of ${pagination.total_pages}`) : null;
-  const subtitle = [cName, pageText].filter(Boolean).join(' · ');
+  const windowText = period === 'today' ? (te ? 'గత 24 గంటలు' : 'Last 24 hours') : (te ? '24 గంటల కంటే పాతవి' : 'Older than 24 hours');
+  const subtitle = [cName, windowText, pageText].filter(Boolean).join(' · ');
 
   const emptyCopy = (() => {
     if (period === 'history') {
@@ -189,7 +190,7 @@ export default function NewsFeed({
     }
     if (newsScope === 'positive') return { title: te ? 'ఈరోజు సానుకూల వార్తలు లేవు' : 'No positive stories today', body: te ? 'ఆర్కైవ్‌లో గత వార్తలు చూడండి.' : 'The archive has earlier stories.' };
     if (newsScope === 'negative') return { title: te ? 'ఈరోజు ప్రతికూల వార్తలు లేవు' : 'No negative stories today', body: te ? 'ఆర్కైవ్‌లో గత వార్తలు చూడండి.' : 'The archive has earlier stories.' };
-    return { title: t.noTodayNewsTitle || 'No stories yet today', body: te ? 'వార్తలు కొన్ని గంటలకోసారి వస్తాయి. ఆర్కైవ్‌లో గత వార్తలు చూడండి.' : 'New stories arrive every few hours. The archive has earlier ones.' };
+    return { title: t.noTodayNewsTitle || 'No stories in the last 24 hours', body: te ? 'వార్తలు కొన్ని గంటలకోసారి వస్తాయి. ఆర్కైవ్‌లో పాత వార్తలు చూడండి.' : 'New stories arrive every few hours. The archive has older ones.' };
   })();
 
   const rangeText = pagination
@@ -202,7 +203,7 @@ export default function NewsFeed({
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="text-2xl font-semibold tracking-tight" id="feed-title">
-            {newsScope === 'social' ? (te ? 'సోషల్ మీడియా' : 'Social media') : period === 'today' ? (te ? 'నేటి వార్తలు' : "Today's news") : (te ? 'వార్తల ఆర్కైవ్' : 'News archive')}
+            {newsScope === 'social' ? (te ? 'సోషల్ మీడియా' : 'Social media') : period === 'today' ? (te ? 'తాజా వార్తలు' : 'Latest news') : (te ? 'వార్తల ఆర్కైవ్' : 'News archive')}
             {newsScope !== 'social' && <span className="ml-3 align-middle text-base font-medium text-muted-foreground" id="news-count-badge">{countLabel} {t.storiesSuffix || 'stories'}</span>}
           </h2>
           <p className="mt-1 text-sm text-muted-foreground" id="feed-subtitle">{subtitle}</p>

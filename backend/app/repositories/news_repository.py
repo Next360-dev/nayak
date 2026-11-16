@@ -41,21 +41,15 @@ def _build_time_clauses(period, date_range, specific_date, search):
         clauses.append("published_at >= %s::date AND published_at < %s::date + INTERVAL '1 day'")
         params.extend([specific_date.strip(), specific_date.strip()])
     elif period == "today" or date_range == "today":
-        clauses.append(
-            "(published_at AT TIME ZONE 'Asia/Kolkata')::date = "
-            "(NOW() AT TIME ZONE 'Asia/Kolkata')::date"
-        )
+        clauses.append("published_at >= NOW() - INTERVAL '24 hours'")           # "latest" = a rolling 24 hours
     elif period == "history":
-        _map = {"24h": "24 hours", "48h": "3 days", "3d": "3 days", "7d": "7 days", "14d": "14 days"}
+        # The Archive is everything OLDER than the latest 24 hours, so the two views never overlap.
+        _map = {"24h": "48 hours", "48h": "48 hours", "3d": "3 days", "7d": "7 days", "14d": "14 days"}
         interval = _map.get(date_range)
         if interval:
-            clauses.append(
-                f"published_at >= NOW() - INTERVAL '{interval}' "
-                "AND (published_at AT TIME ZONE 'Asia/Kolkata')::date < "
-                "(NOW() AT TIME ZONE 'Asia/Kolkata')::date"
-            )
+            clauses.append(f"published_at >= NOW() - INTERVAL '{interval}' AND published_at < NOW() - INTERVAL '24 hours'")
         else:
-            clauses.append("published_at < CURRENT_DATE")
+            clauses.append("published_at < NOW() - INTERVAL '24 hours'")
     elif date_range in ("24h", "48h", "3d", "7d", "14d"):
         _map = {"24h": "24 hours", "48h": "3 days", "3d": "3 days", "7d": "7 days", "14d": "14 days"}
         clauses.append(f"published_at >= CURRENT_TIMESTAMP - INTERVAL '{_map[date_range]}'")

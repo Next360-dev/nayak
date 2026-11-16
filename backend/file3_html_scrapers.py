@@ -30,6 +30,7 @@ AP_AND_JUNK_URL_PATTERN = re.compile(
 )
 
 import httpx
+from news_window import NEWS_WINDOW_HOURS
 import trafilatura
 from bs4 import BeautifulSoup
 from district_data import DISTRICTS_33, detect_district_from_text
@@ -310,7 +311,7 @@ def scrape_url(client: httpx.Client, target: Dict[str, Any], page_url: str, defa
                 continue
 
             # Strict verification of true publication datetime (MAX_AGE_HOURS = 36)
-            pub_dt, is_fresh = get_verified_article_datetime(a, full_url, client=client, max_age_hours=36.0)
+            pub_dt, is_fresh = get_verified_article_datetime(a, full_url, client=client, max_age_hours=NEWS_WINDOW_HOURS)
             if not is_fresh or not pub_dt:
                 # Discard non-fresh or unverified stories (NEVER fall back to now())
                 continue
