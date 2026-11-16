@@ -16,6 +16,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Dict, Any
 
 import httpx
+from news_window import NEWS_WINDOW_HOURS
 import feedparser
 from district_data import DISTRICT_KEYWORDS, detect_district_from_text
 from deduplication import get_canonical_publisher, is_non_governance_content
@@ -171,7 +172,7 @@ def fetch_feed(client: httpx.Client, feed_meta: Dict[str, Any]) -> List[Dict[str
     feed_type = feed_meta.get("type", "rss")
     default_dist = feed_meta.get("default_district", "Statewide")
     now_utc = datetime.now(timezone.utc)
-    MAX_AGE_HOURS = 30  # Strictly today / past 24-30h
+    MAX_AGE_HOURS = NEWS_WINDOW_HOURS   # see news_window.py
     
     try:
         resp = client.get(url, timeout=12.0)

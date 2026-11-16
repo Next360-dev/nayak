@@ -134,3 +134,8 @@ Leader home is look-only; staff get a team task board, team notes and an editabl
 - Set up with `backend/scripts/set_leader_area.py --leader etala_rajender --area "Malkajgiri Lok Sabha" --title MP --party BJP --name "Etala Rajender"` (also writes his profile card, no invented contact data, and tags stored stories that name him). Already run on the local database.
 - Not done: his phone/email (import via Contacts CSV), "Today" is the IST calendar day (early morning it is empty by design; Archive starts at yesterday).
 - Tests: 153 backend, 89 browser (axe clean).
+
+## Rolling 24 h + 48 h window (2026-11-16)
+- "Latest" (the old Today) = a rolling LAST 24 HOURS; Archive = everything older, so they never overlap (`news_repository._build_time_clauses`, social view the same). Archive presets: all older, 24-48 h, 3, 7, 14 days. Test: `backend/tests/test_time_window.py`.
+- Collectors look back 48 h on EVERY run (`backend/news_window.py`, env `NEWS_WINDOW_HOURS`, default 48), so a gap (sleeping laptop, missed run) is filled next time. Stories are kept 60 days and never overwritten (repeats are merged), so every leader and staff member sees the same stored news for their scope.
+- Backfilled now: Rajender 13 stories in 24 h + 15 in 24-48 h (staff identical).

@@ -17,6 +17,7 @@ from typing import List, Dict, Any
 
 import httpx
 import feedparser
+from news_window import GOOGLE_WHEN, NEWS_WINDOW_HOURS
 from district_data import DISTRICTS_33, DISTRICT_KEYWORDS, detect_district_from_text
 from deduplication import get_canonical_publisher, is_non_governance_content
 from constituency_mappings import CONSTITUENCY_TELUGU, classify_article_constituency
@@ -150,17 +151,17 @@ def fetch_district_rss(client: httpx.Client, district: str, lang: str = "en") ->
     records = []
     
     now_utc = datetime.now(timezone.utc)
-    MAX_AGE_HOURS = 30  # Strictly today / past 24-30 hours
+    MAX_AGE_HOURS = NEWS_WINDOW_HOURS   # see news_window.py
 
     terms = DISTRICT_SEARCH_TERMS.get(district, {"en": district, "te": district})
 
     if lang == "te":
         # Native Telugu script query
-        query = f"{terms['te']} వార్తలు when:1d"
+        query = f"{terms['te']} వార్తలు when:{GOOGLE_WHEN}"
         url = f"https://news.google.com/rss/search?q={urllib.parse.quote(query)}&hl=te&gl=IN&ceid=IN:te"
     else:
         # English query with popular aliases
-        query = f"{terms['en']} Telangana when:1d"
+        query = f"{terms['en']} Telangana when:{GOOGLE_WHEN}"
         url = f"https://news.google.com/rss/search?q={urllib.parse.quote(query)}&hl=en-IN&gl=IN&ceid=IN:en"
         
     try:
@@ -230,9 +231,9 @@ def fetch_constituency_rss(client: httpx.Client, constituency: str, te_keyword: 
     """Fetches Google News RSS for a specific assembly constituency in native Telugu."""
     records = []
     now_utc = datetime.now(timezone.utc)
-    MAX_AGE_HOURS = 36
+    MAX_AGE_HOURS = NEWS_WINDOW_HOURS   # see news_window.py
     
-    query = f"{te_keyword} వార్తలు when:1d"
+    query = f"{te_keyword} వార్తలు when:{GOOGLE_WHEN}"
     url = f"https://news.google.com/rss/search?q={urllib.parse.quote(query)}&hl=te&gl=IN&ceid=IN:te"
     
     try:

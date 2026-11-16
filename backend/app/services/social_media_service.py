@@ -165,9 +165,9 @@ def get_social_feed(
                 params.extend([s_param, s_param, s_param])
 
             if period == "today":
-                where_clauses.append("(published_at AT TIME ZONE 'Asia/Kolkata')::date = (NOW() AT TIME ZONE 'Asia/Kolkata')::date")
+                where_clauses.append("published_at >= NOW() - INTERVAL '24 hours'")
             elif period == "history":
-                where_clauses.append("(published_at AT TIME ZONE 'Asia/Kolkata')::date < (NOW() AT TIME ZONE 'Asia/Kolkata')::date")
+                where_clauses.append("published_at < NOW() - INTERVAL '24 hours'")
 
             where_sql = " AND ".join(where_clauses)
 
@@ -199,7 +199,7 @@ def get_social_feed(
 
             # If today has 0 results, fall back to historical so user always sees content
             if total_cnt == 0 and period == "today":
-                fallback_where = [w for w in where_clauses if "published_at AT TIME ZONE" not in w]
+                fallback_where = [w for w in where_clauses if "INTERVAL '24 hours'" not in w]
                 fallback_where_sql = " AND ".join(fallback_where)
                 fb_stats_sql = f"""
                 SELECT
