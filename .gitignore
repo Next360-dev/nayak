@@ -1,0 +1,32 @@
+# secrets (they live OUTSIDE the project; this is a safety net)
+.env
+*.env
+!backend/.env.example
+*.dump
+*.pem
+
+# generated / installed
+node_modules/
+backend/venv/
+venv/
+__pycache__/
+*.pyc
+frontend/dist/
+mobile/app/node_modules/
+*.log
+.pytest_cache/
+
+# local files
+.DS_Store
+*.csv
+!e2e/*.csv
+
+# production kit secrets
+.env.production
+
+# local-only
+telangana-posts/
+backend/scraper_automation.log
+.expo/
+mobile/app/.expo/
+mobile/app/

@@ -1,0 +1,77 @@
+/*
+ * shadcn/ui styles, SCOPED to `.shadcn-scope` so the rest of the app is untouched.
+ * Tailwind's global reset (preflight) is deliberately NOT imported.
+ */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-brand: var(--brand);
+  --color-attention: var(--attention);
+}
+
+.shadcn-scope {
+  /* Nayak tokens: one hue (ink blue), calm greys, one warm colour kept for "needs attention" only */
+  --radius: 0.5rem;
+  --background: #F6F8FB;
+  --foreground: #0F1B2D;
+  --card: #FFFFFF;
+  --card-foreground: #0F1B2D;
+  --popover: #FFFFFF;
+  --popover-foreground: #0F1B2D;
+  --primary: #0B2545;
+  --primary-foreground: #FFFFFF;
+  --secondary: #EEF2F8;
+  --secondary-foreground: #0B2545;
+  --muted: #EEF2F8;
+  --muted-foreground: #566377;
+  --accent: #E8EEF8;
+  --accent-foreground: #0B2545;
+  --destructive: #B42318;
+  --border: #DDE3EC;
+  --input: #C3CBD8;
+  --ring: #17408B;
+  --brand: #17408B;
+  --attention: #B45309;
+  color: var(--foreground);
+  font-family: inherit;
+  line-height: 1.5;
+  letter-spacing: normal;
+}
+
+/* Mini reset, only inside the scope and below the utilities layer */
+@layer base {
+  .shadcn-scope, .shadcn-scope *, .shadcn-scope *::before, .shadcn-scope *::after {
+    box-sizing: border-box;
+    border-width: 0;
+    border-style: solid;
+    border-color: var(--border);
+  }
+  .shadcn-scope h1, .shadcn-scope h2, .shadcn-scope h3, .shadcn-scope h4, .shadcn-scope p { margin: 0; font-size: inherit; font-weight: inherit; }
+  .shadcn-scope a { color: inherit; text-decoration: none; }
+  .shadcn-scope button { font: inherit; color: inherit; background: transparent; cursor: pointer; }
+  .shadcn-scope table { border-collapse: collapse; text-indent: 0; border-color: inherit; }
+}

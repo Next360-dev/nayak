@@ -1,0 +1,22 @@
+# Local PostgreSQL for AI Smart Office.
+#   1. put DB_PASSWORD=<choose one> in backend/.env  (and DB_USER / DB_NAME if you want different ones)
+#   2. docker compose --env-file backend/.env up -d db
+# Data lives in the named volume `aso_pgdata` and survives restarts.
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in backend/.env}
+      POSTGRES_DB: ${DB_NAME:-ai_smart_office}
+    ports:
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
+    volumes:
+      - aso_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-ai_smart_office}"]
+      interval: 5s
+      retries: 10
+volumes:
+  aso_pgdata:

@@ -1,0 +1,16 @@
+.git
+**/node_modules
+**/__pycache__
+**/*.pyc
+backend/venv
+backend/.env
+**/.env
+**/*.env
+frontend/dist
+mobile
+e2e
+telangana-posts
+*.csv
+*.dump
+*.log
+.pytest_cache

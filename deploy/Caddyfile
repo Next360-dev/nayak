@@ -1,0 +1,6 @@
+# HTTPS front door. Caddy gets and renews the certificate by itself when SITE_ADDRESS is a real domain
+# whose DNS points at this server. With SITE_ADDRESS=localhost it makes a local test certificate.
+{$SITE_ADDRESS:localhost} {
+	encode gzip
+	reverse_proxy app:8000
+}
