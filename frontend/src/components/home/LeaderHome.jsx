@@ -57,7 +57,7 @@ export default function LeaderHome({ data, onRefreshed, onChanged, onShare, onOp
   const staffCount = team.filter((t) => t.is_active).length;
 
   return (
-    <Page title={isMinister ? tr('leader.title.minister') : tr('leader.title.mla', { place: data.scope.label })}
+    <Page title={isMinister ? tr('leader.title.minister') : data.title === 'MP' ? data.scope.label : tr('leader.title.mla', { place: data.scope.label })}
           subtitle={isMinister ? tr('leader.sub.minister') : tr('leader.sub.mla')}
           actions={<><RefreshNews onDone={onRefreshed} /><Button variant="outline" size="sm" onClick={onOpenBriefing}><FileText /> {tr('brief.btn')}</Button><Button variant="outline" size="sm" onClick={onOpenNews}>{tr('btn.openFeed')}</Button></>}>
       <Stats big items={[

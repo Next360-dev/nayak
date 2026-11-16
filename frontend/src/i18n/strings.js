@@ -6,6 +6,7 @@ export const STRINGS = {
     'btn.allShares': 'All shares', 'btn.shared': 'Shared', 'btn.myTeam': 'My team', 'btn.users': 'Users', 'btn.lang': 'తెలుగు',
     'sub.admin': 'Master Control · Telangana State Command Center', 'sub.minister': 'Minister Office',
     'sub.mla': 'MLA Office · {place}', 'sub.mlaNoPlace': 'MLA Office', 'sub.staff': 'Team · {place}', 'sub.staffNoPlace': 'Team',
+    'sub.mp': 'MP Office · {place}', 'sub.mpNoPlace': 'MP Office',
 
     'time.now': 'just now', 'time.min': '{n} min ago', 'time.h': '{n} h ago', 'time.d': '{n} d ago',
     'time.inMin': 'in {n} min', 'time.inH': 'in {n} h', 'time.due': 'due now',
@@ -79,6 +80,7 @@ export const STRINGS = {
 
     'staff.title': 'Work Queue', 'staff.sub': 'Find stories that matter and send them to {leader}. Track what happens next.',
     'staff.yourLeader': 'your leader', 'staff.lbl.mla': 'MLA', 'staff.lbl.minister': 'minister', 'staff.lbl.leader': 'leader',
+    'staff.lbl.mp': 'MP', 'role.mp': 'MP',
     'staff.kpi.stories': 'Stories today', 'staff.kpi.urgentN': '{n} urgent',
     'staff.kpi.waiting': 'Waiting on {l}', 'staff.kpi.waitingHint': 'sent, not yet acted on',
     'staff.kpi.acting': 'Being acted on', 'staff.kpi.actingHint': '{l} is working on it',
@@ -89,8 +91,8 @@ export const STRINGS = {
     'staff.from.title': 'From {leader}', 'staff.from.desc': 'What your leader sent you.', 'staff.from.empty': 'Nothing from your leader right now.',
     'inbox.from': 'from {sender}',
 
-    'share.titleStaff': 'Send to my MLA / minister', 'share.titleLeader': 'Send to my team',
-    'share.emptyStaff': 'Your MLA or minister is not set up yet. Ask your admin.',
+    'share.titleStaff': 'Send to my leader', 'share.titleLeader': 'Send to my team',
+    'share.emptyStaff': 'Your leader is not set up yet. Ask your admin.',
     'share.emptyLeader': 'You have no active staff yet. Add them under "My team".',
     'share.notePh': 'Add a note (optional)', 'share.urgent': 'Mark urgent', 'btn.cancel': 'Cancel', 'btn.send': 'Send', 'btn.sending': 'Sending…', 'btn.close': 'Close',
     'inbox.title': 'Shared news', 'inbox.titleAdmin': 'All shares (read-only)', 'inbox.tabInbox': 'Inbox', 'inbox.tabSent': 'Sent',
@@ -158,6 +160,7 @@ export const STRINGS = {
     'btn.allShares': 'అన్ని షేర్లు', 'btn.shared': 'షేర్ చేసినవి', 'btn.myTeam': 'నా బృందం', 'btn.users': 'వినియోగదారులు', 'btn.lang': 'English',
     'sub.admin': 'మాస్టర్ కంట్రోల్ · తెలంగాణ రాష్ట్ర కమాండ్ సెంటర్', 'sub.minister': 'మంత్రి కార్యాలయం',
     'sub.mla': 'ఎమ్మెల్యే కార్యాలయం · {place}', 'sub.mlaNoPlace': 'ఎమ్మెల్యే కార్యాలయం', 'sub.staff': 'బృందం · {place}', 'sub.staffNoPlace': 'బృందం',
+    'sub.mp': 'ఎంపీ కార్యాలయం · {place}', 'sub.mpNoPlace': 'ఎంపీ కార్యాలయం',
 
     'time.now': 'ఇప్పుడే', 'time.min': '{n} నిమిషాల క్రితం', 'time.h': '{n} గంటల క్రితం', 'time.d': '{n} రోజుల క్రితం',
     'time.inMin': '{n} నిమిషాల్లో', 'time.inH': '{n} గంటల్లో', 'time.due': 'ఇప్పుడే',
@@ -231,6 +234,7 @@ export const STRINGS = {
 
     'staff.title': 'వర్క్ క్యూ', 'staff.sub': 'ముఖ్యమైన వార్తలను కనుగొని {leader} కు పంపండి. తర్వాత ఏమవుతుందో గమనించండి.',
     'staff.yourLeader': 'మీ నాయకుడు', 'staff.lbl.mla': 'ఎమ్మెల్యే', 'staff.lbl.minister': 'మంత్రి', 'staff.lbl.leader': 'నాయకుడు',
+    'staff.lbl.mp': 'ఎంపీ', 'role.mp': 'ఎంపీ',
     'staff.kpi.stories': 'ఈ రోజు వార్తలు', 'staff.kpi.urgentN': '{n} అత్యవసరం',
     'staff.kpi.waiting': '{l} వద్ద వేచి ఉన్నవి', 'staff.kpi.waitingHint': 'పంపారు, ఇంకా చర్య లేదు',
     'staff.kpi.acting': 'చర్యలో ఉన్నవి', 'staff.kpi.actingHint': '{l} దీనిపై పని చేస్తున్నారు',
@@ -241,8 +245,8 @@ export const STRINGS = {
     'staff.from.title': '{leader} నుండి', 'staff.from.desc': 'మీ నాయకుడు మీకు పంపినవి.', 'staff.from.empty': 'ప్రస్తుతం మీ నాయకుడి నుండి ఏమీ లేవు.',
     'inbox.from': '{sender} నుండి',
 
-    'share.titleStaff': 'నా ఎమ్మెల్యే / మంత్రికి పంపండి', 'share.titleLeader': 'నా బృందానికి పంపండి',
-    'share.emptyStaff': 'మీ ఎమ్మెల్యే లేదా మంత్రి ఇంకా సెట్ కాలేదు. అడ్మిన్‌ను అడగండి.',
+    'share.titleStaff': 'నా నేతకు పంపండి', 'share.titleLeader': 'నా బృందానికి పంపండి',
+    'share.emptyStaff': 'మీ నేత ఇంకా సెట్ కాలేదు. అడ్మిన్‌ను అడగండి.',
     'share.emptyLeader': 'మీకు ఇంకా క్రియాశీల సిబ్బంది లేరు. "నా బృందం" లో చేర్చండి.',
     'share.notePh': 'ఒక గమనిక జోడించండి (ఐచ్ఛికం)', 'share.urgent': 'అత్యవసరంగా గుర్తించండి', 'btn.cancel': 'రద్దు', 'btn.send': 'పంపండి', 'btn.sending': 'పంపుతున్నాం…', 'btn.close': 'మూసివేయి',
     'inbox.title': 'షేర్ చేసిన వార్తలు', 'inbox.titleAdmin': 'అన్ని షేర్లు (చదవడానికి మాత్రమే)', 'inbox.tabInbox': 'ఇన్‌బాక్స్', 'inbox.tabSent': 'పంపినవి',

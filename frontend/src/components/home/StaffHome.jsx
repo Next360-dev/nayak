@@ -12,7 +12,7 @@ export default function StaffHome({ data, onRefreshed, onShare, onTask, onOpenBo
   const ago = useTimeAgo();
   const { news, shares, leader, board } = data;
   const leaderName = leader?.name || tr('staff.yourLeader');
-  const l = tr(`staff.lbl.${leader ? (leader.role === 'minister' ? 'minister' : 'mla') : 'leader'}`);
+  const l = tr(`staff.lbl.${leader ? (leader.role === 'minister' ? 'minister' : leader.title === 'MP' ? 'mp' : 'mla') : 'leader'}`);
 
   return (
     <Page title={tr('staff.title')} subtitle={tr('staff.sub', { leader: leaderName })}

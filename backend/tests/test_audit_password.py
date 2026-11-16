@@ -26,7 +26,7 @@ def client():
     cur.execute("DROP TABLE IF EXISTS audit_log, refresh_tokens, device_tokens, share_replies, share_recipients, shares, users CASCADE")
     cur.execute("CREATE TABLE users (username TEXT PRIMARY KEY, password_hash TEXT NOT NULL, role TEXT NOT NULL, "
                 "politician_name TEXT, constituency_name TEXT, district_name TEXT, last_login TIMESTAMPTZ)")
-    for f in ("001_auth_and_shares.sql", "003_mobile.sql", "004_share_pair_guard.sql", "005_audit_and_password_age.sql"):
+    for f in ("001_auth_and_shares.sql", "003_mobile.sql", "004_share_pair_guard.sql", "005_audit_and_password_age.sql", "008_leader_title.sql"):
         cur.execute((MIG / f).read_text())
     h = hash_password(PW)
     for u, role, boss in [("admin", "admin", None), ("mla_a", "mla", None), ("staff_a", "staff", "mla_a"),
