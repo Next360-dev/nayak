@@ -1,5 +1,9 @@
 # Nayak
 
+> **CONFIDENTIAL AND PROPRIETARY. All rights reserved.** This repository is shared for review only. Viewing it grants no
+> license to use, copy, deploy, fork, or build on any part of it. See [LICENSE](LICENSE). Contact: gunny9700@gmail.com
+
+
 Governance news for Telangana, collected automatically, with a **master admin** who watches the whole system and **MLAs and
 ministers** who each work with their own **staff team**. News is gathered from public sources every 3 hours, de-duplicated, tagged to
 a district / constituency / MLA, and shown in a web app that has a different home screen for each kind of login.
