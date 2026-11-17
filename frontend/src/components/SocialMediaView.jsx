@@ -46,7 +46,7 @@ export function PlatformIcon({ platform, className = 'size-4' }) {
   return <span className={cn(className, 'inline-block rounded bg-muted')} aria-hidden="true" />;
 }
 
-const PLATFORMS = {
+export const PLATFORMS = {
   twitter: { name: 'X', action: 'View on X', actionTe: 'X లో చూడండి' },
   youtube: { name: 'YouTube', action: 'Watch video', actionTe: 'వీడియో చూడండి' },
   facebook: { name: 'Facebook', action: 'View on Facebook', actionTe: 'Facebook లో చూడండి' },
@@ -58,6 +58,57 @@ function formatCount(num) {
   if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
   if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
   return String(num);
+}
+
+/** One social post card, shared between SocialMediaView's own grid and the mixed All/Positive/Negative feed. */
+export function SocialPostCard({ post, te }) {
+  const cfg = PLATFORMS[post.platform] || { name: post.platform, action: 'View post', actionTe: 'పోస్ట్ చూడండి' };
+  const isPos = post.sentiment === 'positive';
+  const metrics = [['likes_count', Heart, te ? 'లైక్‌లు' : 'Likes'], ['comments_count', MessageCircle, te ? 'కామెంట్లు' : 'Comments'],
+    ['shares_count', Repeat2, te ? 'షేర్లు' : 'Shares'], ['views_count', Eye, te ? 'వీక్షణలు' : 'Views']]
+    .filter(([k]) => post[k] !== null && post[k] !== undefined);
+  return (
+    <article id={`social-card-${post.id}`} className="flex flex-col gap-3 rounded-lg border bg-card p-5">
+      <header className="flex items-center justify-between gap-3">
+        <p className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
+          <PlatformIcon platform={post.platform} className="size-5 shrink-0" />
+          <span className="font-medium text-foreground">{cfg.name}</span>
+          <span>· {post.relative_time || (te ? 'ఇటీవల' : 'Recent')}</span>
+        </p>
+        <span className={cn('shrink-0 text-xs font-semibold', isPos ? 'text-emerald-700' : 'text-destructive')}>
+          {isPos ? (te ? 'సానుకూలం' : 'Positive') : (te ? 'విమర్శ / ప్రజా సమస్య' : 'Critical')}
+        </span>
+      </header>
+
+      <div className="flex items-baseline gap-2 text-sm">
+        <span className="font-semibold">{post.author_name}</span>
+        {post.author_handle && <span className="text-muted-foreground">{post.author_handle}</span>}
+        {post.mla_name && <span className="ml-auto truncate text-xs text-muted-foreground">{te ? 'గురించి' : 'about'} {post.mla_name}</span>}
+      </div>
+
+      <p className="text-[15px] leading-relaxed">{post.content}</p>
+
+      {post.sentiment_reason && (
+        <p className="flex items-start gap-2 rounded-md bg-secondary px-3 py-2 text-sm text-muted-foreground">
+          <Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+          <span><span className="font-medium text-foreground">{te ? 'ఈ టోన్ ఎందుకు: ' : 'Why this tone: '}</span>{post.sentiment_reason}</span>
+        </p>
+      )}
+
+      <footer className="mt-auto flex flex-wrap items-center justify-between gap-3 pt-1">
+        <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+          {metrics.length > 0 ? metrics.map(([k, Icon, title]) => (
+            <span key={k} className="inline-flex items-center gap-1.5" title={title}>
+              <Icon className="size-3.5" aria-hidden="true" /><span className="tabular-nums">{formatCount(post[k])}</span><span className="sr-only">{title}</span>
+            </span>
+          )) : <span>{te ? 'ఎంగేజ్‌మెంట్ సంఖ్యలు అందుబాటులో లేవు' : 'Engagement numbers not available'}</span>}
+        </p>
+        <Button asChild variant="outline" size="sm">
+          <a href={post.url} target="_blank" rel="noopener noreferrer">{te ? cfg.actionTe : cfg.action} <ExternalLink /></a>
+        </Button>
+      </footer>
+    </article>
+  );
 }
 
 export default function SocialMediaView({
@@ -309,55 +360,7 @@ export default function SocialMediaView({
 
         {!isLoading && paginatedPosts.length > 0 && (
           <div className="grid gap-4 xl:grid-cols-2">
-            {paginatedPosts.map((post) => {
-              const cfg = PLATFORMS[post.platform] || { name: post.platform, action: 'View post', actionTe: 'పోస్ట్ చూడండి' };
-              const isPos = post.sentiment === 'positive';
-              const metrics = [['likes_count', Heart, te ? 'లైక్‌లు' : 'Likes'], ['comments_count', MessageCircle, te ? 'కామెంట్లు' : 'Comments'],
-                ['shares_count', Repeat2, te ? 'షేర్లు' : 'Shares'], ['views_count', Eye, te ? 'వీక్షణలు' : 'Views']]
-                .filter(([k]) => post[k] !== null && post[k] !== undefined);
-              return (
-                <article key={post.id} id={`social-card-${post.id}`} className="flex flex-col gap-3 rounded-lg border bg-card p-5">
-                  <header className="flex items-center justify-between gap-3">
-                    <p className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
-                      <PlatformIcon platform={post.platform} className="size-5 shrink-0" />
-                      <span className="font-medium text-foreground">{cfg.name}</span>
-                      <span>· {post.relative_time || (te ? 'ఇటీవల' : 'Recent')}</span>
-                    </p>
-                    <span className={cn('shrink-0 text-xs font-semibold', isPos ? 'text-emerald-700' : 'text-destructive')}>
-                      {isPos ? (te ? 'సానుకూలం' : 'Positive') : (te ? 'విమర్శ / ప్రజా సమస్య' : 'Critical')}
-                    </span>
-                  </header>
-
-                  <div className="flex items-baseline gap-2 text-sm">
-                    <span className="font-semibold">{post.author_name}</span>
-                    {post.author_handle && <span className="text-muted-foreground">{post.author_handle}</span>}
-                    {post.mla_name && <span className="ml-auto truncate text-xs text-muted-foreground">{te ? 'గురించి' : 'about'} {post.mla_name}</span>}
-                  </div>
-
-                  <p className="text-[15px] leading-relaxed">{post.content}</p>
-
-                  {post.sentiment_reason && (
-                    <p className="flex items-start gap-2 rounded-md bg-secondary px-3 py-2 text-sm text-muted-foreground">
-                      <Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-                      <span><span className="font-medium text-foreground">{te ? 'ఈ టోన్ ఎందుకు: ' : 'Why this tone: '}</span>{post.sentiment_reason}</span>
-                    </p>
-                  )}
-
-                  <footer className="mt-auto flex flex-wrap items-center justify-between gap-3 pt-1">
-                    <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                      {metrics.length > 0 ? metrics.map(([k, Icon, title]) => (
-                        <span key={k} className="inline-flex items-center gap-1.5" title={title}>
-                          <Icon className="size-3.5" aria-hidden="true" /><span className="tabular-nums">{formatCount(post[k])}</span><span className="sr-only">{title}</span>
-                        </span>
-                      )) : <span>{te ? 'ఎంగేజ్‌మెంట్ సంఖ్యలు అందుబాటులో లేవు' : 'Engagement numbers not available'}</span>}
-                    </p>
-                    <Button asChild variant="outline" size="sm">
-                      <a href={post.url} target="_blank" rel="noopener noreferrer">{te ? cfg.actionTe : cfg.action} <ExternalLink /></a>
-                    </Button>
-                  </footer>
-                </article>
-              );
-            })}
+            {paginatedPosts.map((post) => <SocialPostCard key={post.id} post={post} te={te} />)}
           </div>
         )}
       </div>

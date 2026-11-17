@@ -1,13 +1,18 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight, Filter, Info, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { classifyArticleSentiment, isStatewideArticle } from '../utils/constants';
+import { fetchSocialMediaPosts } from '../utils/api';
 import NewsCard from './NewsCard';
-import SocialMediaView from './SocialMediaView';
+import SocialMediaView, { SocialPostCard } from './SocialMediaView';
 import RefreshNews from './RefreshNews';
+
+// These three scopes show social media posts mixed in with news articles. Civic and Statewide stay
+// articles-only: social posts have no civic/statewide classification in the data to filter them by.
+const MIX_SOCIAL_SCOPES = ['all', 'positive', 'negative'];
 
 export default function NewsFeed({
   articles, isLoading, error, currentUser, currentLang, period, onPeriodChange,
@@ -46,6 +51,32 @@ export default function NewsFeed({
       ? currentUser.constituency_name
       : 'Telangana State');
 
+  // Social posts to mix into All/Positive/Negative, so those tabs aren't news-only. Civic and
+  // Statewide are left alone (see MIX_SOCIAL_SCOPES). Needs a specific constituency to scope to,
+  // same requirement the dedicated Social media tab already has.
+  const [mixedSocialPosts, setMixedSocialPosts] = useState([]);
+  const [mixedSocialStats, setMixedSocialStats] = useState(null);
+  const shouldMixSocial = MIX_SOCIAL_SCOPES.includes(newsScope) && !!activeConstituency;
+
+  useEffect(() => {
+    if (!shouldMixSocial) {
+      setMixedSocialPosts([]);
+      setMixedSocialStats(null);
+      return;
+    }
+    let cancelled = false;
+    fetchSocialMediaPosts({
+      constituency: activeConstituency,
+      mlaName: activeMlaName || 'All',
+      period,
+      sentiment: newsScope === 'positive' ? 'positive' : newsScope === 'negative' ? 'negative' : undefined,
+    }).then((res) => {
+      if (cancelled || !res || res.status !== 'success') return;
+      setMixedSocialPosts(res.posts || []);
+      setMixedSocialStats(res.stats || null);
+    }).catch(() => { if (!cancelled) { setMixedSocialPosts([]); setMixedSocialStats(null); } });
+    return () => { cancelled = true; };
+  }, [shouldMixSocial, newsScope, activeConstituency, activeMlaName, period]);
 
   // Classify articles with sentiment & statewide scope
   const categorizedArticles = useMemo(() => {
@@ -116,16 +147,42 @@ export default function NewsFeed({
     return sortedArticles;
   }, [sortedArticles, newsScope]);
 
+  // Merged list for All/Positive/Negative: matching articles plus matching social posts, sorted
+  // together by time. Uses a strict sentiment filter (unlike displayedArticles' fallback-to-all
+  // above) because social posts already fill the tab in when there are few or no matching articles.
+  const mixedItems = useMemo(() => {
+    if (!shouldMixSocial) return null;
+    const strictArticles = newsScope === 'positive'
+      ? sortedArticles.filter(a => a.sentiment === 'positive')
+      : newsScope === 'negative'
+        ? sortedArticles.filter(a => a.sentiment === 'negative')
+        : sortedArticles;
+    const articleItems = strictArticles.map(a => ({
+      kind: 'article', key: `a-${a.id}`, ts: a.date_time ? new Date(a.date_time).getTime() : 0, data: a,
+    }));
+    const socialItems = mixedSocialPosts.map(p => ({
+      kind: 'social', key: `s-${p.id}`, ts: p.published_at ? new Date(p.published_at).getTime() : 0, data: p,
+    }));
+    return [...articleItems, ...socialItems].sort((x, y) => y.ts - x.ts);
+  }, [shouldMixSocial, newsScope, sortedArticles, mixedSocialPosts]);
+
   // Total count for current active scope
   const activeScopeTotal = useMemo(() => {
-    if (newsScope === 'statewide') return scopeCounts?.statewide ?? (pagination?.total_records || displayedArticles.length);
-    if (newsScope === 'all') return scopeCounts?.all ?? (pagination?.total_records || displayedArticles.length);
-    if (newsScope === 'positive') return scopeCounts?.positive ?? displayedArticles.length;
-    if (newsScope === 'negative') return scopeCounts?.negative ?? displayedArticles.length;
-    if (newsScope === 'civic') return scopeCounts?.civic ?? displayedArticles.length;
-    if (newsScope === 'social') return scopeCounts?.social ?? 0;
-    return pagination?.total_records || displayedArticles.length;
-  }, [newsScope, scopeCounts, pagination, displayedArticles.length]);
+    const base = newsScope === 'statewide' ? scopeCounts?.statewide ?? (pagination?.total_records || displayedArticles.length)
+      : newsScope === 'all' ? scopeCounts?.all ?? (pagination?.total_records || displayedArticles.length)
+      : newsScope === 'positive' ? scopeCounts?.positive ?? displayedArticles.length
+      : newsScope === 'negative' ? scopeCounts?.negative ?? displayedArticles.length
+      : newsScope === 'civic' ? scopeCounts?.civic ?? displayedArticles.length
+      : newsScope === 'social' ? scopeCounts?.social ?? 0
+      : pagination?.total_records || displayedArticles.length;
+    if (shouldMixSocial && mixedSocialStats) {
+      const extra = newsScope === 'positive' ? (mixedSocialStats.positive_posts || 0)
+        : newsScope === 'negative' ? (mixedSocialStats.negative_posts || 0)
+        : (mixedSocialStats.total_posts || 0);
+      return base + extra;
+    }
+    return base;
+  }, [newsScope, scopeCounts, pagination, displayedArticles.length, shouldMixSocial, mixedSocialStats]);
 
   // Smart page number window for pagination
   const pageNumbers = useMemo(() => {
@@ -159,13 +216,26 @@ export default function NewsFeed({
   const fallbackDist = allAreDistrictUpdates ? (sortedArticles[0].district_name || 'District') : '';
   const countLabel = isLoading && totalCount === 0 ? '…' : activeScopeTotal.toLocaleString();
 
+  // The active tab's own count grows by its matching social posts when mixing is on; the other
+  // (inactive) tabs keep the articles-only count, since we only fetch social stats for the active one.
+  const displayCounts = (shouldMixSocial && mixedSocialStats)
+    ? {
+      ...computedCounts,
+      [newsScope]: (computedCounts[newsScope] || 0) + (
+        newsScope === 'positive' ? (mixedSocialStats.positive_posts || 0)
+          : newsScope === 'negative' ? (mixedSocialStats.negative_posts || 0)
+          : (mixedSocialStats.total_posts || 0)
+      ),
+    }
+    : computedCounts;
+
   const SCOPES = [
-    { id: 'all', label: te ? 'అన్నీ' : 'All', count: computedCounts.all },
-    { id: 'positive', label: te ? 'సానుకూలం' : 'Positive', count: computedCounts.positive },
-    { id: 'negative', label: te ? 'ప్రతికూలం' : 'Negative', count: computedCounts.negative },
-    { id: 'statewide', label: te ? 'రాష్ట్రవ్యాప్తం' : 'Statewide', count: computedCounts.statewide },
-    { id: 'civic', label: te ? 'ప్రజా సమస్యలు' : 'Civic', count: computedCounts.civic },
-    { id: 'social', label: te ? 'సోషల్ మీడియా' : 'Social media', count: computedCounts.social },
+    { id: 'all', label: te ? 'అన్నీ' : 'All', count: displayCounts.all },
+    { id: 'positive', label: te ? 'సానుకూలం' : 'Positive', count: displayCounts.positive },
+    { id: 'negative', label: te ? 'ప్రతికూలం' : 'Negative', count: displayCounts.negative },
+    { id: 'statewide', label: te ? 'రాష్ట్రవ్యాప్తం' : 'Statewide', count: displayCounts.statewide },
+    { id: 'civic', label: te ? 'ప్రజా సమస్యలు' : 'Civic', count: displayCounts.civic },
+    { id: 'social', label: te ? 'సోషల్ మీడియా' : 'Social media', count: displayCounts.social },
   ];
   const PRESETS = [
     { range: 'all', label: te ? 'అన్ని పాత వార్తలు' : 'All older' },
@@ -297,7 +367,7 @@ export default function NewsFeed({
             <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p>
           )}
 
-          {!isLoading && !error && displayedArticles.length === 0 && (
+          {!isLoading && !error && (shouldMixSocial ? mixedItems.length === 0 : displayedArticles.length === 0) && (
             <div className="rounded-lg border bg-card px-6 py-14 text-center">
               <p className="text-base font-semibold">{emptyCopy.title}</p>
               <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">{emptyCopy.body}</p>
@@ -307,7 +377,17 @@ export default function NewsFeed({
             </div>
           )}
 
-          {!isLoading && !error && displayedArticles.length > 0 && (
+          {!isLoading && !error && shouldMixSocial && mixedItems.length > 0 && (
+            <div className="space-y-4">
+              {mixedItems.map((item) => item.kind === 'social'
+                ? <SocialPostCard key={item.key} post={item.data} te={te} />
+                : <div key={item.key} className="divide-y overflow-hidden rounded-lg border bg-card">
+                    <NewsCard art={item.data} currentLang={currentLang} t={t} onOpenOutletsModal={onOpenOutletsModal} onShare={onShare} />
+                  </div>)}
+            </div>
+          )}
+
+          {!isLoading && !error && !shouldMixSocial && displayedArticles.length > 0 && (
             <div className="divide-y overflow-hidden rounded-lg border bg-card">
               {displayedArticles.map((art) => (
                 <NewsCard key={art.id} art={art} currentLang={currentLang} t={t} onOpenOutletsModal={onOpenOutletsModal} onShare={onShare} />
