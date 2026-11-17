@@ -4,20 +4,25 @@ Copyright (c) 2026 Shiva Ganesh. All rights reserved.
 This software, its source code, documentation, designs, data structures, rules and ideas as expressed in this
 repository (the "Software") are confidential and proprietary. No license or right is granted except as written here.
 
-1. VIEWING. Access to this repository is granted only to people the owner has personally invited, for the sole
-   purpose of reviewing and evaluating the Software. Viewing is not a license to use.
+1. VIEWING. The owner may make this repository visible to specific invited people or publicly visible (for example
+   on GitHub) for portfolio, review, or demonstration purposes. Being able to view it, whether invited or not,
+   never grants a license to use it, and every person who views it is bound by this license in full.
 2. NO USE. Without the owner's prior written permission you may not run, deploy, host, or operate the Software
    or any part of it, whether for commercial, internal, evaluation-in-production, or any other purpose.
-3. NO COPYING OR DERIVATIVES. You may not copy, reproduce, fork, mirror, translate, adapt, port, reimplement
-   from it, or create derivative works of the Software or any part of it, and you may not use it to train or tune
-   any machine-learning model.
+3. NO COPYING, DERIVATIVES, OR AUTOMATED COLLECTION. You may not copy, reproduce, fork, mirror, translate, adapt,
+   port, reimplement from it, or create derivative works of the Software or any part of it. You may not scrape,
+   crawl, bulk-download, or otherwise programmatically collect it, and you may not use it, in whole or part, to
+   train, fine-tune, evaluate, or prompt any machine-learning or AI model.
 4. NO DISCLOSURE. You may not share, publish, upload, or disclose the Software, screenshots of it, or its
-   non-public design and logic to any third party.
-5. NO REMOVAL. You may not remove or alter this notice or any ownership marking.
-6. TERMINATION. Any breach ends your access immediately. On request you must delete every copy you hold.
-7. NO WARRANTY. The Software is provided "as is", without warranty of any kind. The owner is not liable for any
+   non-public design and logic to any third party, beyond the fact that the repository itself may already be
+   publicly visible.
+5. NO TRADEMARK RIGHTS. "Nayak" and any associated names, logos, or branding are not licensed by this document.
+   You may not use them to describe your own product, service, or fork.
+6. NO REMOVAL. You may not remove or alter this notice or any ownership marking.
+7. TERMINATION. Any breach ends your access immediately. On request you must delete every copy you hold.
+8. NO WARRANTY. The Software is provided "as is", without warranty of any kind. The owner is not liable for any
    damages arising from it.
-8. REMEDIES. The owner may seek injunctive relief and damages for any breach, in addition to any other remedy
+9. REMEDIES. The owner may seek injunctive relief and damages for any breach, in addition to any other remedy
    available by law. This license is governed by the laws of India; courts at Hyderabad, Telangana have
    exclusive jurisdiction.
 
