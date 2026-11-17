@@ -54,12 +54,19 @@ export default function NewsFeed({
   // Social posts to mix into All/Positive/Negative, so those tabs aren't news-only. Civic and
   // Statewide are left alone (see MIX_SOCIAL_SCOPES). Needs a specific constituency to scope to,
   // same requirement the dedicated Social media tab already has.
+  //
+  // Fetched ONCE per constituency (unfiltered, not re-fetched on every tab click, and not gated to
+  // only when a mixing tab is active) so all three badge numbers — All, Positive, Negative — are
+  // simultaneously correct and stable no matter which tab is open. Fetching per-active-tab instead
+  // made the numbers visibly jump on every click (e.g. Positive showing 6 while All was open, then
+  // jumping to 50 only once you clicked into Positive) — that was the "glitch".
   const [mixedSocialPosts, setMixedSocialPosts] = useState([]);
   const [mixedSocialStats, setMixedSocialStats] = useState(null);
-  const shouldMixSocial = MIX_SOCIAL_SCOPES.includes(newsScope) && !!activeConstituency;
+  const socialDataReady = !!activeConstituency && newsScope !== 'social';
+  const shouldMixSocial = MIX_SOCIAL_SCOPES.includes(newsScope) && socialDataReady;
 
   useEffect(() => {
-    if (!shouldMixSocial) {
+    if (!socialDataReady) {
       setMixedSocialPosts([]);
       setMixedSocialStats(null);
       return;
@@ -69,14 +76,13 @@ export default function NewsFeed({
       constituency: activeConstituency,
       mlaName: activeMlaName || 'All',
       period,
-      sentiment: newsScope === 'positive' ? 'positive' : newsScope === 'negative' ? 'negative' : undefined,
     }).then((res) => {
       if (cancelled || !res || res.status !== 'success') return;
       setMixedSocialPosts(res.posts || []);
       setMixedSocialStats(res.stats || null);
     }).catch(() => { if (!cancelled) { setMixedSocialPosts([]); setMixedSocialStats(null); } });
     return () => { cancelled = true; };
-  }, [shouldMixSocial, newsScope, activeConstituency, activeMlaName, period]);
+  }, [socialDataReady, activeConstituency, activeMlaName, period]);
 
   // Classify articles with sentiment & statewide scope
   const categorizedArticles = useMemo(() => {
@@ -157,10 +163,16 @@ export default function NewsFeed({
       : newsScope === 'negative'
         ? sortedArticles.filter(a => a.sentiment === 'negative')
         : sortedArticles;
+    // mixedSocialPosts is fetched unfiltered (see above), so filter by sentiment here to match the tab.
+    const matchingSocial = newsScope === 'positive'
+      ? mixedSocialPosts.filter(p => p.sentiment === 'positive')
+      : newsScope === 'negative'
+        ? mixedSocialPosts.filter(p => p.sentiment === 'negative')
+        : mixedSocialPosts;
     const articleItems = strictArticles.map(a => ({
       kind: 'article', key: `a-${a.id}`, ts: a.date_time ? new Date(a.date_time).getTime() : 0, data: a,
     }));
-    const socialItems = mixedSocialPosts.map(p => ({
+    const socialItems = matchingSocial.map(p => ({
       kind: 'social', key: `s-${p.id}`, ts: p.published_at ? new Date(p.published_at).getTime() : 0, data: p,
     }));
     return [...articleItems, ...socialItems].sort((x, y) => y.ts - x.ts);
@@ -216,16 +228,15 @@ export default function NewsFeed({
   const fallbackDist = allAreDistrictUpdates ? (sortedArticles[0].district_name || 'District') : '';
   const countLabel = isLoading && totalCount === 0 ? '…' : activeScopeTotal.toLocaleString();
 
-  // The active tab's own count grows by its matching social posts when mixing is on; the other
-  // (inactive) tabs keep the articles-only count, since we only fetch social stats for the active one.
-  const displayCounts = (shouldMixSocial && mixedSocialStats)
+  // All, Positive and Negative badges all grow by their matching social counts at once, regardless
+  // of which tab is currently open — mixedSocialStats comes from one fetch per constituency (see
+  // above), not a per-tab one, so these three numbers stay fixed as you click between tabs.
+  const displayCounts = (socialDataReady && mixedSocialStats)
     ? {
       ...computedCounts,
-      [newsScope]: (computedCounts[newsScope] || 0) + (
-        newsScope === 'positive' ? (mixedSocialStats.positive_posts || 0)
-          : newsScope === 'negative' ? (mixedSocialStats.negative_posts || 0)
-          : (mixedSocialStats.total_posts || 0)
-      ),
+      all: (computedCounts.all || 0) + (mixedSocialStats.total_posts || 0),
+      positive: (computedCounts.positive || 0) + (mixedSocialStats.positive_posts || 0),
+      negative: (computedCounts.negative || 0) + (mixedSocialStats.negative_posts || 0),
     }
     : computedCounts;
 
