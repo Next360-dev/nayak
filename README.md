@@ -3,8 +3,9 @@
 **A governance desk for Telangana leaders and the teams who work for them.**
 Nayak collects public news, tags it to the right constituency and leader, and gives every login a screen built for what that person does.
 
-> **CONFIDENTIAL AND PROPRIETARY. All rights reserved.** This repository is shared for review only. Viewing it grants no
-> license to use, copy, deploy, fork, or build on any part of it. See [LICENSE](LICENSE). Contact: gunny9700@gmail.com
+> **CONFIDENTIAL AND PROPRIETARY. All rights reserved.** This repository may be publicly visible for portfolio and
+> review purposes, but visibility grants no license to use, copy, deploy, fork, scrape, or build on any part of it,
+> and it may not be used to train or prompt an AI model. See [LICENSE](LICENSE). Contact: gunny9700@gmail.com
 
 ---
 
