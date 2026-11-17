@@ -1,6 +1,6 @@
 {
   "rewrites": [
-    { "source": "/api/:path*", "destination": "https://acrylic-translation-influenced-toward.trycloudflare.com/api/:path*" },
+    { "source": "/api/:path*", "destination": "https://certified-partition-obj-contract.trycloudflare.com/api/:path*" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [
