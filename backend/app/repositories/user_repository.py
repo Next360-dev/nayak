@@ -35,6 +35,7 @@ def _row_to_user(row) -> dict:
         "boss_role": row[7],
         "leader_title": row[9] if len(row) > 9 else None,     # "MP" etc.; None means the role's normal title
         "leader_party": row[10] if len(row) > 10 else None,
+        "must_change_password": bool(row[11]) if len(row) > 11 and row[11] is not None else False,
     }
 
 
@@ -75,13 +76,15 @@ def find_user_by_username(username: str):
 
 def create_user(username: str, password_hash: str, politician_name: str,
                 constituency_name: str, district_name: str, role: str = "mla",
-                mla_username: str | None = None):
+                mla_username: str | None = None,
+                must_change_password: bool = False):
     """Inserts a new user with an already-hashed password."""
     _run(
         _SQL_CREATE_USER,
         (username.strip().lower(), password_hash, role, politician_name,
          constituency_name, district_name,
-         mla_username.strip().lower() if mla_username else None),
+         mla_username.strip().lower() if mla_username else None,
+         bool(must_change_password)),
         commit=True,
     )
     return find_user_by_username(username)
@@ -89,6 +92,14 @@ def create_user(username: str, password_hash: str, politician_name: str,
 
 def set_password_hash(username: str, password_hash: str) -> None:
     _run(_SQL_SET_PASSWORD, (password_hash, username.strip().lower()), commit=True)
+
+
+def set_must_change_password(username: str, value: bool) -> None:
+    _run(
+        "UPDATE users SET must_change_password = %s WHERE LOWER(username) = %s",
+        (bool(value), username.strip().lower()),
+        commit=True,
+    )
 
 
 def update_user_last_login(username: str) -> None:

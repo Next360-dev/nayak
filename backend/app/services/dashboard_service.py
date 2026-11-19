@@ -12,7 +12,7 @@ see counts or stories outside its own scope.
 from datetime import datetime, timedelta, timezone
 
 from app.core.ttl_cache import TTLCache
-from app.repositories import audit_repository, feedback_repository, share_repository, system_repository, user_repository
+from app.repositories import audit_repository, feedback_repository, share_repository, system_repository, user_repository, work_item_repository
 from zoneinfo import ZoneInfo
 
 from app.core.config import settings
@@ -194,12 +194,17 @@ def _admin(user: dict) -> dict:
 
 def _leader(user: dict) -> dict:
     me = user["username"].lower()
+    try:
+        pending = work_item_repository.pending_count(me)
+    except Exception:
+        pending = 0
     return {
         "title": user.get("leader_title"),
         "news": _news_block(user, statewide_view=user["role"] == "minister"),
         "shares": _shares_block(me),
         "team": user_repository.list_staff_of(me),
         "board": board_repository.summary(me, me, briefing_today()),
+        "approvals": {"pending": pending},
     }
 
 

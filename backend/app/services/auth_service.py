@@ -41,6 +41,25 @@ def check_rate_limit(key: str, max_requests: int = 30, window_seconds: int = 60)
         recent.append(now)
         _RATE_LIMITS[key] = recent
         return True
+def login_ip_blocked(key: str, max_failures: int = 20, window_seconds: int = _WINDOW_SECONDS) -> bool:
+    """Check only (no counting): has this IP already failed enough times to be throttled?
+
+    Only failed logins count towards the IP budget, so a busy shared connection where
+    people log in successfully is never locked out by the spray protection.
+    """
+    with _RATE_LIMIT_LOCK:
+        cutoff = time.time() - window_seconds
+        recent = [t for t in _RATE_LIMITS.get(key, []) if t > cutoff]
+        _RATE_LIMITS[key] = recent
+        return len(recent) >= max_failures
+
+
+def record_failed_login_ip(key: str) -> None:
+    """Count one failed login against an IP's budget."""
+    with _RATE_LIMIT_LOCK:
+        _RATE_LIMITS.setdefault(key, []).append(time.time())
+
+
 def _split_key(key: str) -> tuple[str, str]:
     username, _, ip = key.partition("|")
     return username, ip or "unknown"
@@ -89,6 +108,7 @@ def public_user(user: dict) -> dict:
         "district_name": user["district_name"],
         "leader_title": user.get("leader_title"),
         "leader_party": user.get("leader_party"),
+        "must_change_password": bool(user.get("must_change_password")),
         # scoped roles only ever see their own constituency's data
         "scoped": is_scoped(user),
         "can_share": role != "admin",      # the master admin only watches
@@ -146,6 +166,7 @@ def create_user(username: str, password: str, politician_name: str,
         district_name=district_name,
         role=role,
         mla_username=mla_username if role == "staff" else None,
+        must_change_password=True,
     )
 
 

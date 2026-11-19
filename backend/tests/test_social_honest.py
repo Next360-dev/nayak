@@ -47,6 +47,7 @@ def client():
     cur.execute((pathlib.Path(__file__).parents[1] / "migrations" / "006_alerts_feedback.sql").read_text())  # contacts + alerts
     cur.execute((pathlib.Path(__file__).parents[1] / "migrations" / "007_team_board.sql").read_text())  # team board
     cur.execute((pathlib.Path(__file__).parents[1] / "migrations" / "008_leader_title.sql").read_text())  # leader title
+    cur.execute((pathlib.Path(__file__).parents[1] / "migrations" / "009_must_change_password.sql").read_text())  # must change password
     cur.execute((ROOT / "migrations" / "001_auth_and_shares.sql").read_text())
     cur.execute((ROOT / "migrations" / "002_social_metrics_nullable.sql").read_text())
     cur.execute((ROOT / "migrations" / "002_social_metrics_nullable.sql").read_text())  # re-runnable

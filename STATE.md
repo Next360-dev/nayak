@@ -1,6 +1,11 @@
 # STATE: Nayak
+Phase 3 F0 (2026-11-18): tokens cleanup complete - tints/flag/white in src/theme; HomeParts.tsx avatar borderRadius 24 -> radius.avatar; index.tsx uses tints; tsc + eslint clean, grep clean on touched files.
 
-Overall: web build 100%; mobile app code complete (M0-M6.4). One manual step left: M6.5 EAS preview build (needs user yes).
+Overall: web build 100%; mobile app code complete (M0-M6.4). One manual step left: M6.5 EAS preview build (needs user yes). Phase 2 (web parity + single login): M7-M13.3 complete (19/21 tasks, ~90%) - 158 backend tests, web build clean, mobile tsc + lint clean.
+Phase 2 M7 (2026-11-18): password rule is 12 chars, top-common and username-equality rejected for self-chosen passwords (generated ones only need the length); login has a per-IP failure throttle (20 failures / 15 min across all usernames, failures only so successful logins never count) on top of the per-user DB lockout; the web forces the change-password dialog while `must_change_password` is set; the phone `User` type carries `leader_title`, `leader_party`, `can_share`, `must_change_password`.
+Phase 2 M8 (2026-11-18): the phone login shows the same two messages as the web ("That username or password is not right" / the 15-minute lockout) and routing is decided by `must_change_password`; a reset password lands on `app/change-password.tsx`, and the router guard sends any other route back there until it is changed (its only way out is "Sign out instead"). The same screen is reachable from Settings for a voluntary change, shows the 12-character rule, stores the fresh access token the endpoint returns and drops the revoked refresh token, so other sessions end for good.
+Phase 2 M8.3 (2026-11-18): `app.config.js` resolves `API_BASE_URL` per build profile - development defaults to the local backend, `preview`/`production` require `PREVIEW_API_BASE_URL`/`PRODUCTION_API_BASE_URL` (https only) and fail the build if missing instead of shipping an app pointed at localhost. `API_BASE_URL`/`EXPO_PUBLIC_API_BASE_URL` always wins, so the changing demo tunnel address is passed at run time and never committed; `mobile/README.md` explains it.
+
 Working on: mobile app, release prep. Web build is 100% (final QA pass 2026-11-12: 375/768/1440 px checked for admin + mla, mobile header overflow fixed, login `class` bug fixed, focus ring + aria labels added, README port fixed). Launch-prep round (2026-11-13): admin password reset (UI + endpoint), /api/health, security headers, session-expired notice, load-error states with Retry; build + 35 tests pass. Not done: deactivate user (needs a DB column), CSP header.
 
 ## Done
@@ -71,8 +76,8 @@ Working on: mobile app, release prep. Web build is 100% (final QA pass 2026-11-1
 - Database trigger (migration 004) enforces the sender/recipient pairing itself. 68 tests pass, the API tests run with the trigger on.
 - Mobile app updated to the new rules (tsc + lint clean, not device-tested). `./local.sh start` now applies migrations on every start.
 
-## Scope decision (2026-11-14, user)
-- Mobile app is PAUSED (no device test, no EAS build, no further mobile work).
+## Scope decision (2026-11-14, user) — UPDATED 2026-11-18
+- Mobile work RESUMED: Phase 2 (web parity + single login) M7-M13.3 done (19/21 tasks). Remaining: M13.1 real-device test, M13.4 EAS preview build (needs user yes).
 - Deploy is SKIPPED for now. Focus: the web app, running locally via ./local.sh.
 
 ## Demo logins (2026-11-14)
@@ -139,3 +144,4 @@ Leader home is look-only; staff get a team task board, team notes and an editabl
 - "Latest" (the old Today) = a rolling LAST 24 HOURS; Archive = everything older, so they never overlap (`news_repository._build_time_clauses`, social view the same). Archive presets: all older, 24-48 h, 3, 7, 14 days. Test: `backend/tests/test_time_window.py`.
 - Collectors look back 48 h on EVERY run (`backend/news_window.py`, env `NEWS_WINDOW_HOURS`, default 48), so a gap (sleeping laptop, missed run) is filled next time. Stories are kept 60 days and never overwritten (repeats are merged), so every leader and staff member sees the same stored news for their scope.
 - Backfilled now: Rajender 13 stories in 24 h + 15 in 24-48 h (staff identical).
+- 2026-11-19: Mobile V0 layering + tokens (UI_SPEC_V2_STRICT) done — opaque L1 surfaces, backdrop veil, solid ivory tab-bar wrapper (no seam); E1 clean, tsc+eslint clean.

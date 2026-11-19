@@ -18,6 +18,7 @@ from typing import List, Dict, Any
 import httpx
 from news_window import NEWS_WINDOW_HOURS
 import feedparser
+from image_utils import image_from_entry
 from district_data import DISTRICT_KEYWORDS, detect_district_from_text
 from deduplication import get_canonical_publisher, is_non_governance_content
 from constituency_mappings import classify_article_constituency, get_canonical_district
@@ -308,6 +309,9 @@ def fetch_feed(client: httpx.Client, feed_meta: Dict[str, Any]) -> List[Dict[str
                 "url": link,
                 "published_at": published_dt.isoformat()
             }
+            img = image_from_entry(entry, raw_summary, link)
+            if img:
+                record["image_url"] = img
             records.append(record)
             
     except Exception as e:

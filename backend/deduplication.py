@@ -300,10 +300,10 @@ def deduplicate_sources(sources_list: List[Dict[str, Any]]) -> List[Dict[str, An
         if c_url:
             seen_urls.add(c_url)
             
-        unique_sources.append({
-            "publisher": c_pub,
-            "url": raw_url or c_url
-        })
+        entry = {"publisher": c_pub, "url": raw_url or c_url}
+        if s.get("image_url"):
+            entry["image_url"] = s["image_url"]
+        unique_sources.append(entry)
         
     return unique_sources
 
@@ -759,10 +759,10 @@ def _cluster_single_bin(district: str, records: List[Dict[str, Any]], similarity
                     matched_cluster["summary"] = summary
             else:
                 # Same Event / Multi-Publisher
-                matched_cluster["sources"].append({
-                    "publisher": canon_pub,
-                    "url": url
-                })
+                new_src = {"publisher": canon_pub, "url": url}
+                if item.get("image_url"):
+                    new_src["image_url"] = item["image_url"]
+                matched_cluster["sources"].append(new_src)
                 if len(summary) > len(matched_cluster["summary"]):
                     matched_cluster["summary"] = summary
         else:
@@ -799,7 +799,8 @@ def _cluster_single_bin(district: str, records: List[Dict[str, Any]], similarity
                 "sources": [
                     {
                         "publisher": canon_pub,
-                        "url": url
+                        "url": url,
+                        **({"image_url": item["image_url"]} if item.get("image_url") else {}),
                     }
                 ],
                 "published_at": pub_at,

@@ -15,7 +15,7 @@ from app.api.deps import get_current_user, require_admin
 from app.schemas.users import (
     CreateUserRequest, LoginRequest, LogoutRequest, RefreshTokenRequest, ResetPasswordRequest, SetActiveRequest, ChangePasswordRequest,
 )
-from app.core.security import MIN_PASSWORD_LENGTH, hash_password
+from app.core.security import MIN_PASSWORD_LENGTH, hash_password, is_common_password
 from app.services import auth_service
 from app.core.security import create_access_token, verify_password
 from app.repositories import audit_repository, user_repository
@@ -28,11 +28,17 @@ def login(payload: LoginRequest, request: Request):
     client_ip = request.client.host if request.client else "unknown"
     throttle_key = f"{payload.username.strip().lower()}|{client_ip}"
 
+    # Per-IP throttle across ALL usernames (spray protection). Only failures count.
+    ip_key = f"login_ip:{client_ip}"
+    if auth_service.login_ip_blocked(ip_key):
+        raise HTTPException(status_code=429, detail="Too many failed attempts. Try again in 15 minutes.")
+
     if auth_service.is_locked_out(throttle_key):
         raise HTTPException(status_code=429, detail="Too many failed attempts. Try again in 15 minutes.")
 
     user, token = auth_service.authenticate(payload.username, payload.password, throttle_key)
     if not user:
+        auth_service.record_failed_login_ip(ip_key)
         return {"status": "error", "message": "Invalid credentials"}
     resp = {"status": "success", "token": token, "user": auth_service.public_user(user)}
     if payload.client == "mobile":
@@ -55,11 +61,17 @@ def change_my_password(payload: ChangePasswordRequest, request: Request, user: d
     if not verify_password(payload.current_password, stored_hash):
         audit_repository.log("password_change_failed", actor=user["username"], target=user["username"], ip=ip)
         raise HTTPException(status_code=403, detail="Current password is wrong.")
-    if len(payload.new_password or "") < MIN_PASSWORD_LENGTH:
+    new_pw = payload.new_password or ""
+    if len(new_pw) < MIN_PASSWORD_LENGTH:
         raise HTTPException(status_code=422, detail=f"New password must be at least {MIN_PASSWORD_LENGTH} characters.")
+    if new_pw.strip().lower() == user["username"].strip().lower():
+        raise HTTPException(status_code=422, detail="New password must not be the same as your username.")
+    if is_common_password(new_pw):
+        raise HTTPException(status_code=422, detail="This password is too common. Choose a less common one.")
     if payload.new_password == payload.current_password:
         raise HTTPException(status_code=422, detail="New password must be different from the current one.")
     user_repository.set_password_hash(user["username"], hash_password(payload.new_password))
+    user_repository.set_must_change_password(user["username"], False)
     auth_service.revoke_all_refresh_tokens_for_user(user["username"])
     audit_repository.log("password_changed", actor=user["username"], target=user["username"], ip=ip)
     # every OTHER session is now invalid; hand back a fresh token so this one keeps working
@@ -117,6 +129,7 @@ def reset_password_endpoint(payload: ResetPasswordRequest, admin: dict = Depends
     if not target:
         raise HTTPException(status_code=404, detail="User not found")
     user_repository.set_password_hash(payload.username, hash_password(payload.new_password))
+    user_repository.set_must_change_password(payload.username, True)
     # Sign the user out of every mobile/refresh session; they must log in with the new password.
     auth_service.revoke_all_refresh_tokens_for_user(payload.username)
     audit_repository.log("password_reset", actor=admin["username"], target=payload.username.strip().lower())

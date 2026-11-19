@@ -16,7 +16,24 @@ from app.core.config import settings
 
 _hasher = PasswordHasher()
 
-MIN_PASSWORD_LENGTH = 8
+MIN_PASSWORD_LENGTH = 12
+
+# Top common passwords rejected for self-chosen passwords (case-insensitive).
+COMMON_PASSWORDS = {
+    "password", "password1", "password123", "123456", "12345678", "123456789",
+    "1234567890", "qwerty", "qwerty123", "abc123", "letmein", "welcome",
+    "welcome1", "admin", "admin123", "iloveyou", "monkey", "dragon", "master",
+    "sunshine", "princess", "football", "baseball", "superman", "trustno1",
+    "passw0rd", "p@ssword", "password!", "changeme", "nayak", "telangana",
+    # 12+ characters, so the length rule cannot hide them
+    "password1234", "password12345", "password123456", "administrator",
+    "qwertyuiop12", "1qaz2wsx3edc", "123456789012", "iloveyou1234",
+    "welcome12345", "letmein12345", "abc123456789", "changeme1234",
+}
+
+
+def is_common_password(password: str) -> bool:
+    return (password or "").strip().lower() in COMMON_PASSWORDS
 
 
 def hash_password(password: str) -> str:

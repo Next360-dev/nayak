@@ -255,7 +255,8 @@ def store_clusters_in_db(clusters: List[Dict[str, Any]]) -> Tuple[int, int]:
                         if s_pub not in existing_pubs and (not s_url or s_url not in existing_urls):
                             current_sources.append({
                                 "publisher": s_pub,
-                                "url": s.get("url", "")
+                                "url": s.get("url", ""),
+                                **({"image_url": s["image_url"]} if s.get("image_url") else {}),
                             })
                             existing_pubs.add(s_pub)
                             if s_url:
@@ -280,6 +281,12 @@ def store_clusters_in_db(clusters: List[Dict[str, Any]]) -> Tuple[int, int]:
                 else:
                     # Layer 2 already deduplicated this batch; append directly to pending insert
                     pending_clusters.append(c)
+
+            try:
+                from image_utils import enrich_clusters
+                enrich_clusters(pending_clusters)
+            except Exception as img_err:
+                logger.warning(f"Story pictures skipped: {img_err}")
 
             from app.services.sentiment_service import begin_cycle, classify_tone
             begin_cycle()   # fresh budget for the optional local AI

@@ -735,7 +735,20 @@ export default function App() {
           {isInboxOpen && <ShareInbox currentUser={currentUser} onClose={() => setIsInboxOpen(false)} onChanged={refreshUnread} />}
           {isUsersOpen && <AdminUsersModal onClose={() => setIsUsersOpen(false)} />}
           {isTeamOpen && <TeamModal onClose={() => setIsTeamOpen(false)} />}
-          {isPasswordOpen && <AccountDialog onClose={() => setIsPasswordOpen(false)} onPasswordChanged={(tok) => setToken(tok)} />}
+          {(isPasswordOpen || !!currentUser?.must_change_password) && (
+            <AccountDialog
+              force={!!currentUser?.must_change_password}
+              onClose={() => { if (!currentUser?.must_change_password) setIsPasswordOpen(false); }}
+              onPasswordChanged={async (tok) => {
+                setToken(tok);
+                try {
+                  const u = await fetchMe();
+                  if (u) { setCurrentUser(u); localStorage.setItem('ai_office_user', JSON.stringify(u)); }
+                } catch { /* keep going */ }
+                setIsPasswordOpen(false);
+              }}
+            />
+          )}
           {isBriefingOpen && <BriefingDialog role={currentUser?.role} onClose={() => setIsBriefingOpen(false)} />}
           {board && <TeamBoard prefill={board} onClose={() => setBoard(null)} />}
           {isFeedbackOpen && <FeedbackDialog onClose={() => setIsFeedbackOpen(false)} />}

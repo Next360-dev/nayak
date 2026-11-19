@@ -1737,18 +1737,42 @@ def get_constituencies_for_district(district: str) -> List[str]:
 
 
 # ── Areas bigger than one assembly constituency (an MP's Lok Sabha seat) ─────────────────────────────────────
-# A leader whose constituency_name is an area sees the news of ALL its member constituencies. Names must match ALL_119_MLAS.
+# A leader whose constituency_name is an area sees the news of ALL its member constituencies. Member names must
+# match ALL_119_MLAS keys exactly. MP data: Telangana 2024 Lok Sabha results (ECI).
 AREAS = {
-    "Malkajgiri Lok Sabha": ["Medchal", "Malkajgiri", "Quthbullapur", "Kukatpally", "Uppal", "L.B. Nagar", "Secunderabad Cantt. (SC)"],
+    "Adilabad Lok Sabha": {"members": ["Sirpur", "Asifabad (ST)", "Khanapur (ST)", "Adilabad", "Boath (ST)", "Nirmal", "Mudhole"], "mp": "Godam Nagesh", "party": "BJP"},
+    "Peddapalli Lok Sabha": {"members": ["Chennur (SC)", "Bellampalli (SC)", "Mancherial", "Dharmapuri (SC)", "Ramagundam", "Manthani", "Peddapalle"], "mp": "Vamsi Krishna Gaddam", "party": "INC"},
+    "Karimnagar Lok Sabha": {"members": ["Karimnagar", "Choppadandi (SC)", "Vemulawada", "Sircilla", "Manakondur (SC)", "Huzurabad", "Husnabad"], "mp": "Bandi Sanjay Kumar", "party": "BJP"},
+    "Nizamabad Lok Sabha": {"members": ["Armur", "Bodhan", "Nizamabad Urban", "Nizamabad Rural", "Balkonda", "Koratla", "Jagtial"], "mp": "Arvind Dharmapuri", "party": "BJP"},
+    "Zahirabad Lok Sabha": {"members": ["Jukkal (SC)", "Banswada", "Yellareddy", "Kamareddy", "Narayankhed", "Andole (SC)", "Zahirabad (SC)"], "mp": "Suresh Kumar Shetkar", "party": "INC"},
+    "Medak Lok Sabha": {"members": ["Siddipet", "Medak", "Narsapur", "Sangareddy", "Patancheru", "Dubbak", "Gajwel"], "mp": "Madhavaneni Raghunandan Rao", "party": "BJP"},
+    "Malkajgiri Lok Sabha": {"members": ["Medchal", "Malkajgiri", "Quthbullapur", "Kukatpally", "Uppal", "L.B. Nagar", "Secunderabad Cantt. (SC)"], "mp": "Eatala Rajender", "party": "BJP"},
+    "Secunderabad Lok Sabha": {"members": ["Musheerabad", "Amberpet", "Khairatabad", "Jubilee Hills", "Sanathnagar", "Nampally", "Secunderabad"], "mp": "G. Kishan Reddy", "party": "BJP"},
+    "Hyderabad Lok Sabha": {"members": ["Malakpet", "Karwan", "Goshamahal", "Charminar", "Chandrayangutta", "Yakutpura", "Bahadurpura"], "mp": "Asaduddin Owaisi", "party": "AIMIM"},
+    "Chevella Lok Sabha": {"members": ["Maheshwaram", "Rajendranagar", "Serilingampally", "Chevella (SC)", "Pargi", "Vikarabad (SC)", "Tandur"], "mp": "Konda Vishweshwar Reddy", "party": "BJP"},
+    "Mahabubnagar Lok Sabha": {"members": ["Kodangal", "Narayanpet", "Mahabubnagar", "Jadcherla", "Devarkadra", "Makthal", "Shadnagar"], "mp": "D K Aruna", "party": "BJP"},
+    "Nagarkurnool Lok Sabha": {"members": ["Wanaparthy", "Gadwal", "Alampur (SC)", "Nagarkurnool", "Achampet (SC)", "Kalwakurthy", "Kollapur"], "mp": "Mallu Ravi", "party": "INC"},
+    "Nalgonda Lok Sabha": {"members": ["Devarakonda (ST)", "Nagarjuna Sagar", "Miryalaguda", "Huzurnagar", "Kodad", "Suryapet", "Nalgonda"], "mp": "Kunduru Raghuveer", "party": "INC"},
+    "Bhongir Lok Sabha": {"members": ["Ibrahimpatnam", "Munugode", "Bhongir", "Nakrekal (SC)", "Thungathurthi (SC)", "Alair", "Jangaon"], "mp": "Chamala Kiran Kumar Reddy", "party": "INC"},
+    "Warangal Lok Sabha": {"members": ["Station Ghanpur (SC)", "Palakurthi", "Parkal", "Warangal West", "Warangal East", "Wardhannapet (SC)", "Bhupalpalle"], "mp": "Kadiyam Kavya", "party": "INC"},
+    "Mahabubabad Lok Sabha": {"members": ["Dornakal (ST)", "Mahabubabad (ST)", "Narasampet", "Mulugu (ST)", "Pinapaka (ST)", "Yellandu (ST)", "Bhadrachalam (ST)"], "mp": "Balram Naik Porika", "party": "INC"},
+    "Khammam Lok Sabha": {"members": ["Khammam", "Palair", "Madhira (SC)", "Wyra (ST)", "Sathupalli (SC)", "Kothagudem", "Aswaraopeta (ST)"], "mp": "Ramasahayam Raghuram Reddy", "party": "INC"},
 }
 
 
 def area_members(name):
-    """The member constituencies of an area, or None when `name` is an ordinary constituency."""
-    return AREAS.get(name)
+    """The member constituencies of an area, or None when `name` is an ordinary constituency.
+
+    Entry may be {"members": [...], "mp": ..., "party": ...} (current shape) or a plain
+    list of members (older shape, still accepted for callers/tests).
+    """
+    entry = AREAS.get(name)
+    if isinstance(entry, dict):
+        return entry["members"]
+    return entry
 
 
 def area_districts(name):
     """The districts the members belong to (for the web search), in a stable order."""
-    members = AREAS.get(name) or []
+    members = area_members(name) or []
     return list(dict.fromkeys(d for m in members for d in [get_canonical_district(m)] if d and d != "Statewide"))

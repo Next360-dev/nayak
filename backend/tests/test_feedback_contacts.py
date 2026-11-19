@@ -29,7 +29,7 @@ def client():
         constituency VARCHAR(100) DEFAULT 'Statewide', constituencies TEXT[] DEFAULT '{}', civic_constituencies TEXT[] DEFAULT '{}',
         state VARCHAR(100) DEFAULT 'Telangana', summary TEXT, sources JSONB DEFAULT '[]'::jsonb, published_at TIMESTAMPTZ, created_at TIMESTAMPTZ,
         sentiment VARCHAR(20) DEFAULT 'positive', is_statewide BOOLEAN DEFAULT FALSE, archived_at TIMESTAMPTZ DEFAULT now())""")
-    for f in ("001_auth_and_shares.sql", "003_mobile.sql", "004_share_pair_guard.sql", "005_audit_and_password_age.sql", "006_alerts_feedback.sql", "007_team_board.sql", "008_leader_title.sql"):
+    for f in ("001_auth_and_shares.sql", "003_mobile.sql", "004_share_pair_guard.sql", "005_audit_and_password_age.sql", "006_alerts_feedback.sql", "007_team_board.sql", "008_leader_title.sql", "009_must_change_password.sql"):
         cur.execute((MIG / f).read_text())
     h = hash_password(PW)
     for u, role in [("admin", "admin"), ("mla_s", "mla"), ("staff_s", "staff")]:

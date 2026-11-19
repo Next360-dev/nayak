@@ -74,6 +74,7 @@ def reset_staff_password(payload: ResetPasswordRequest, leader: dict = Depends(r
         raise HTTPException(status_code=422, detail=f"Password must be at least {MIN_PASSWORD_LENGTH} characters.")
     _own_staff_or_404(leader, payload.username)
     user_repository.set_password_hash(payload.username, hash_password(payload.new_password))
+    user_repository.set_must_change_password(payload.username, True)
     auth_service.revoke_all_refresh_tokens_for_user(payload.username)
     audit_repository.log("password_reset", actor=leader["username"], target=payload.username.strip().lower())
     return {"status": "success", "username": payload.username.strip().lower()}

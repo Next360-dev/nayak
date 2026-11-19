@@ -113,16 +113,16 @@ function PasswordTab({ onChanged }) {
 }
 
 /** My account: contact details + alert switches, and my own password. */
-export default function AccountDialog({ onClose, onPasswordChanged }) {
+export default function AccountDialog({ onClose, onPasswordChanged, force = false }) {
   const { tr } = useLang();
   return (
-    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+    <Dialog open onOpenChange={(o) => { if (!o && !force) onClose(); }}>
       <DialogContent className="max-h-[92vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{tr('acct.title')}</DialogTitle>
           <DialogDescription>{tr('acct.desc')}</DialogDescription>
         </DialogHeader>
-        <Tabs defaultValue="contact">
+        <Tabs defaultValue={force ? 'password' : 'contact'}>
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="contact">{tr('acct.tabContact')}</TabsTrigger>
             <TabsTrigger value="password">{tr('acct.tabPassword')}</TabsTrigger>

@@ -11,4 +11,12 @@ def _fresh_caches():
         dashboard_service._news_cache.clear()
     except Exception:
         pass  # pure-logic tests that never import the app
+    try:
+        # Login throttles are also per-process in-memory state; one test's failed
+        # logins must not leak a 429 into the next test.
+        from app.services import auth_service
+        with auth_service._RATE_LIMIT_LOCK:
+            auth_service._RATE_LIMITS.clear()
+    except Exception:
+        pass
     yield

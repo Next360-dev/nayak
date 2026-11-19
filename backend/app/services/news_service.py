@@ -173,6 +173,7 @@ def enrich_articles(raw_rows, *, constituency=None, politician=None, news_scope=
             "category": dept,
             "source_type": s_type,
             "sources": sources,
+            "image_url": next((s.get("image_url") for s in sources if isinstance(s, dict) and s.get("image_url")), None),
             "source_count": len(sources),
             "civic_constituencies": civic_consts,
             "news_type": news_type,
@@ -243,6 +244,7 @@ def deduplicate_results(results: list) -> list:
                 (existing.get("sources") or []) + (item.get("sources") or [])
             )
             existing["sources"] = merged
+            existing["image_url"] = existing.get("image_url") or next((x.get("image_url") for x in merged if isinstance(x, dict) and x.get("image_url")), None)
             existing["source_count"] = len(merged)
             if merged:
                 existing["url"] = merged[0].get("url", existing.get("url", ""))
@@ -441,6 +443,7 @@ def get_news_feed(
             "category": item.get("category", item["solver_official"]),
             "date_time": item["published_at"],
             "sources": item.get("sources", []),
+            "image_url": item.get("image_url"),
             "source_count": item.get("source_count", 1),
             "civic_constituencies": item.get("civic_constituencies", []),
             "news_type": item.get("news_type", "civic"),

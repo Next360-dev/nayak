@@ -34,6 +34,7 @@ def client():
     cur.execute((pathlib.Path(__file__).parents[1] / "migrations" / "006_alerts_feedback.sql").read_text())  # contacts + alerts
     cur.execute((pathlib.Path(__file__).parents[1] / "migrations" / "007_team_board.sql").read_text())  # team board
     cur.execute((pathlib.Path(__file__).parents[1] / "migrations" / "008_leader_title.sql").read_text())  # leader title
+    cur.execute((pathlib.Path(__file__).parents[1] / "migrations" / "009_must_change_password.sql").read_text())  # must change password
     cur.execute((MIGRATION.parent / "004_share_pair_guard.sql").read_text())
     h = hash_password(PW)
     for u, role, pol, con, dist, boss in [

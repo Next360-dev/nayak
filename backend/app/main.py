@@ -18,7 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.api.deps import require_admin
-from app.api.routes import auth, devices, news, politicians, translation, social_media, shares, team, dashboard, audit, account, feedback, contacts, board
+from app.api.routes import auth, devices, news, politicians, translation, social_media, shares, team, dashboard, audit, account, feedback, contacts, board, work_items
 from app.core.config import settings
 
 app = FastAPI(title="Nayak API")
@@ -94,6 +94,7 @@ app.include_router(account.router)
 app.include_router(feedback.router)
 app.include_router(contacts.router)
 app.include_router(board.router)
+app.include_router(work_items.router)
 app.include_router(devices.router)
 
 # ── Background Automation (Immediate on Boot, then Every 3 Hours) ────────────

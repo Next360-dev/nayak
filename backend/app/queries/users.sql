@@ -15,14 +15,15 @@ SELECT u.username, u.role,
        m.role,
        u.password_changed_at,
        COALESCE(m.leader_title, u.leader_title),
-       COALESCE(m.leader_party, u.leader_party)
+       COALESCE(m.leader_party, u.leader_party),
+       u.must_change_password
 FROM users u
 LEFT JOIN users m ON u.role = 'staff' AND LOWER(m.username) = LOWER(u.mla_username)
 WHERE LOWER(u.username) = %s AND u.is_active = TRUE;
 
 -- name: create_user
-INSERT INTO users (username, password_hash, role, politician_name, constituency_name, district_name, mla_username)
-VALUES (%s, %s, %s, %s, %s, %s, %s);
+INSERT INTO users (username, password_hash, role, politician_name, constituency_name, district_name, mla_username, must_change_password)
+VALUES (%s, %s, %s, %s, %s, %s, %s, %s);
 
 -- name: set_password
 UPDATE users SET password_hash = %s, password_changed_at = NOW() WHERE LOWER(username) = %s;

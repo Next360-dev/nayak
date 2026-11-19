@@ -26,7 +26,7 @@ def client():
     cur.execute("DROP TABLE IF EXISTS audit_log, refresh_tokens, device_tokens, share_replies, share_recipients, shares, users CASCADE")
     cur.execute("CREATE TABLE users (username TEXT PRIMARY KEY, password_hash TEXT NOT NULL, role TEXT NOT NULL, "
                 "politician_name TEXT, constituency_name TEXT, district_name TEXT, last_login TIMESTAMPTZ)")
-    for f in ("001_auth_and_shares.sql", "003_mobile.sql", "004_share_pair_guard.sql", "005_audit_and_password_age.sql", "008_leader_title.sql"):
+    for f in ("001_auth_and_shares.sql", "003_mobile.sql", "004_share_pair_guard.sql", "005_audit_and_password_age.sql", "008_leader_title.sql", "009_must_change_password.sql"):
         cur.execute((MIG / f).read_text())
     h = hash_password(PW)
     for u, role, boss in [("admin", "admin", None), ("mla_a", "mla", None), ("staff_a", "staff", "mla_a"),
@@ -125,6 +125,49 @@ def test_lockout_counts_failures_in_the_audit_table_and_a_success_resets_it(clie
     cur.execute("SELECT COUNT(*) FROM audit_log WHERE action='login_failed' AND target='locky'"); failed = cur.fetchone()[0]
     cur.close(); n.close()
     assert failed == 8
+
+
+def test_new_password_must_not_be_short_common_or_the_username(client):
+    admin = hdr(login(client, "admin")["token"])
+    assert client.post("/api/users/create", headers=admin,
+                       json={"username": "pickyuser123", "password": PW, "role": "mla"}).status_code == 200
+    t = hdr(login(client, "pickyuser123")["token"])
+
+    r = client.post("/api/me/password", headers=t, json={"current_password": PW, "new_password": "elevenchars"})
+    assert r.status_code == 422 and "at least 12" in r.json()["detail"]
+
+    r = client.post("/api/me/password", headers=t, json={"current_password": PW, "new_password": "pickyuser123"})
+    assert r.status_code == 422 and "same as your username" in r.json()["detail"]
+
+    r = client.post("/api/me/password", headers=t, json={"current_password": PW, "new_password": "password1234"})
+    assert r.status_code == 422 and "too common" in r.json()["detail"]
+
+    # nothing above changed the password, and a good one still works
+    assert login(client, "pickyuser123", PW)["status"] == "success"
+    assert client.post("/api/me/password", headers=t,
+                       json={"current_password": PW, "new_password": "a-good-strong-one-7"}).status_code == 200
+    assert login(client, "pickyuser123", "a-good-strong-one-7")["status"] == "success"
+
+
+# ── login spray: many usernames from one IP ──────────────────────────────────
+def test_spraying_usernames_from_one_ip_is_throttled_and_other_ips_are_not(client):
+    from starlette.testclient import TestClient
+    from app.main import app
+
+    sprayer = TestClient(app, client=("203.0.113.9", 50000))
+    elsewhere = TestClient(app, client=("198.51.100.7", 50000))
+
+    for i in range(20):
+        r = sprayer.post("/api/login", json={"username": f"nobody{i}", "password": "wrong-password-x"})
+        assert r.status_code == 200 and r.json()["status"] == "error", i
+
+    r = sprayer.post("/api/login", json={"username": "nobody99", "password": "wrong-password-x"})
+    assert r.status_code == 429
+    # the right password from the throttled IP is refused too, until the window passes
+    assert sprayer.post("/api/login", json={"username": "admin", "password": PW}).status_code == 429
+
+    # a different IP is untouched
+    assert elsewhere.post("/api/login", json={"username": "admin", "password": PW}).json()["status"] == "success"
 
 
 def test_admin_dashboard_carries_recent_audit(client):

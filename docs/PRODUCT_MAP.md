@@ -1,6 +1,6 @@
 # Nayak: Product Map (read this instead of re-reading the code)
 
-Last verified against the code: 2026-11-14 (sharing model changed: staff <-> leaders; master admin is read-only). If you change a feature, update this file in the same change.
+Last verified against the code: 2026-11-18 (Phase 2 mobile parity M7-M13.2 done; M13.1 device test and M13.4 EAS build still pending). If you change a feature, update this file in the same change.
 
 ## 1. The idea in one paragraph
 Governance news for Telangana, collected automatically and shown to leaders. News is scraped from public sources every
@@ -110,8 +110,8 @@ Open items, most important first:
 8. ~~Admin nudge~~ DONE as email: the admin is emailed once when a share sits unopened for 24 h (needs SMTP).
 9. **Hardening:** CSP, DB-backed lockout, backups (`./local.sh backup`, `restore-check`), dependency fixes, accessibility and load test are DONE. Still open: uptime monitoring from OUTSIDE the server, Safari/WebKit not tested, HTTPS must be provided by the host when deployed.
 10. **News accuracy.** Tone is decided when a story is stored, by keyword rules (positive is the fallback). A 100-story spot check found the 3 "urgent" labels all genuine (death/accident only) but clearly negative headlines often shown as positive. Done so far: extra Telugu negative words; Kashmir/Ladakh, sports-tournament and crop-price filters; an honest **"neutral" option, OFF by default** (`SENTIMENT_NEUTRAL_FALLBACK=true`: neutral unless a clearly positive word; neutral stories show under All News only, no badge; measured on 2,595 real stories: 74% neutral, 9% positive, 14% negative); `backend/scripts/relabel_sentiment.py` (DRY RUN unless `--apply`); an **opt-in free local AI** via Ollama (`OLLAMA_MODEL=...`, see `docs/LOCAL_AI.md`; `./local.sh ollama-check`). **CORRECTION: a Gemini key does NOT change the tone.** `analyze_article_sentiment` (Gemini) exists in `sentiment_service.py` but the live pipeline never calls it; Gemini is only used for duplicate matching and summaries. THE USER STILL CHOOSES: keep the rules, switch neutral on, and/or enable the local AI after measuring it with the Report button and `scripts/quality_sample.py` / `quality_score.py`. Existing stories were NOT relabelled.
-11. **Mobile app** (`mobile/app`): updated 2026-11-14 to the new sharing rules (create screen, Share link hidden for admin, Sent tab for every role with admin read-only, reply author name fix); type-check and lint clean, NOT run on a device/emulator. EAS build (M6.5) still waits for the user's yes.
-12. **Deploy is skipped for now and the mobile app is PAUSED** (user decision 2026-11-14). The web app runs locally via `./local.sh`.
+11. **Mobile app** (`mobile/app`): Phase 2 parity done (M7-M12.1): single login, change-password, role homes, news parity (scope tabs, Latest/Archive, refresh), team board + my-team, admin users lite. M13.2 accessibility + Telugu clipping pass done. Type-check + lint clean. NOT run on a real device yet (M13.1) and EAS preview build (M13.4) waits for the user's yes.
+12. **Deploy is skipped for now** (user decision 2026-11-14). Mobile work is RESUMED (Phase 2, M7-M13.2 done). The web app runs locally via `./local.sh`.
 
 ## Front-end stack notes (read before touching CSS)
 - Old screens = plain CSS (`frontend/styles.css`, `src/*.css`). New dashboards = **shadcn/ui + Tailwind v4**, components in `src/components/ui/` (installed with the official shadcn CLI: card, badge, button, table, separator, alert), screens in `src/components/home/`. Add more with `npx shadcn@latest add <name> -y` (then fix any `from "cn"` import to `@/lib/utils`).
