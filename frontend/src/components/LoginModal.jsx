@@ -62,15 +62,11 @@ export default function LoginModal({ isOpen, onLoginSuccess, notice, onToggleLan
             </span>
             <span>
               <span className="block text-lg font-semibold tracking-tight">{tr('login.brand')}</span>
-              <span className="mt-0.5 block text-[11px] font-medium uppercase tracking-[.18em] text-white/60">Telangana · India</span>
+              <span className="mt-0.5 block text-[11px] font-medium uppercase tracking-[.18em] text-white/60">{tr('login.eyebrow')}</span>
             </span>
           </div>
 
           <div className="relative mt-10 max-w-lg space-y-8 lg:mt-0">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[.06] px-3 py-1.5 text-xs font-medium text-white/80">
-              <span aria-hidden="true" className="size-2 rounded-full bg-[#138808] ring-2 ring-[#138808]/20" />
-              Public service, made clearer
-            </div>
             <div className="space-y-4">
               <h1 className="max-w-md text-4xl font-semibold leading-[1.12] tracking-tight sm:text-5xl">{tr('login.tagline')}</h1>
               <p className="max-w-md text-base leading-relaxed text-white/70">{tr('login.lead')}</p>
@@ -106,7 +102,7 @@ export default function LoginModal({ isOpen, onLoginSuccess, notice, onToggleLan
             <div aria-hidden="true" className="mb-7 flex items-center gap-2">
               <span className="h-1 w-10 rounded-full bg-[#ff9933]" />
               <span className="h-1 w-10 rounded-full bg-[#138808]" />
-              <span className="text-[11px] font-semibold uppercase tracking-[.16em] text-slate-500">Office workspace</span>
+              <span className="text-[11px] font-semibold uppercase tracking-[.16em] text-slate-500">{tr('login.eyebrow')}</span>
             </div>
             <div className="mb-8 space-y-2">
               <h2 className="text-2xl font-semibold tracking-tight">{tr('login.title')}</h2>

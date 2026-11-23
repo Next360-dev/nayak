@@ -11,6 +11,7 @@ import RefreshNews from '../RefreshNews';
 import TopAlerts from './TopAlerts';
 import LeaderSuggestions from '../LeaderSuggestions';
 import WatchlistActivity from './WatchlistActivity';
+import LeaderVoiceAssistant from './LeaderVoiceAssistant';
 
 const STEPS = ['seen', 'acting', 'done'];
 
@@ -64,7 +65,7 @@ export default function LeaderHome({ data, currentUser, onRefreshed, onChanged, 
   return (
       <Page title={isMinister ? tr('leader.title.minister') : data.title === 'MP' ? data.scope.label : tr('leader.title.mla', { place: data.scope.label })}
           subtitle={isMinister ? tr('leader.sub.minister') : tr('leader.sub.mla')}
-          actions={<RefreshNews onDone={onRefreshed} />}>
+          actions={<><LeaderVoiceAssistant data={data} /><RefreshNews onDone={onRefreshed} /></>}>
       <Stats big items={[
         { label: tr('leader.kpi.decisions'), value: decisionCount, hint: tr('leader.kpi.decisionsHint', { shares: shares.inbox.new, posts: data.approvals?.pending || 0 }), tone: decisionCount ? 'warn' : 'default' },
         { label: tr('leader.kpi.urgent'), value: news.error ? '–' : news.urgent, hint: news.error || tr(news.urgent ? 'leader.kpi.urgentHint' : 'leader.kpi.urgentClear'), tone: news.urgent ? 'bad' : 'default' },
