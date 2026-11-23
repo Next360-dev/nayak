@@ -1,6 +1,9 @@
 Nayak - Proprietary Software License
 Copyright (c) 2026 Shiva Ganesh. All rights reserved.
 
+THIS IS NOT AN OPEN-SOURCE LICENSE. No open-source license (MIT, Apache, GPL, Creative Commons or any other)
+applies to this repository or to any part of the Software written by the owner.
+
 This software, its source code, documentation, designs, data structures, rules and ideas as expressed in this
 repository (the "Software") are confidential and proprietary. No license or right is granted except as written here.
 
@@ -25,5 +28,16 @@ repository (the "Software") are confidential and proprietary. No license or righ
 9. REMEDIES. The owner may seek injunctive relief and damages for any breach, in addition to any other remedy
    available by law. This license is governed by the laws of India; courts at Hyderabad, Telangana have
    exclusive jurisdiction.
+
+10. THIRD-PARTY COMPONENTS. The Software depends on third-party libraries and services (for example React, FastAPI,
+    Expo, PostgreSQL drivers). They stay under their own licenses, which this document does not change. This license
+    covers only the owner's own code, designs, data structures, rules and documentation.
+11. CONTRIBUTIONS. Anything you submit to this repository (code, text, design, issues, suggestions) is owned by the
+    owner from the moment you submit it. You confirm you have the right to submit it, and you receive no rights
+    in the Software in return.
+12. DATA AND CREDENTIALS. The Software may handle personal data about public representatives, staff and citizens, and
+    deployment secrets. You may not extract, keep or disclose such data or secrets. If you come across any by
+    accident, tell the owner and delete your copy.
+13. SEVERABILITY. If a court finds any part of this license unenforceable, the rest stays in force.
 
 To request permission for any use, contact the owner: gunny9700@gmail.com
