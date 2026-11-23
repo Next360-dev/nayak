@@ -3,7 +3,7 @@ import { Image, Pressable, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { banner, forest, radius, space, surface, tints, white, useTheme } from '../theme';
+import { banner, ink, radius, space, surface, tints, white, useTheme } from '../theme';
 import { relativeTime } from '../lib/time';
 import { Card } from './index';
 
@@ -89,7 +89,7 @@ export function ScopeTabs({ items, value, onChange }: { items: ScopeItem[]; valu
             accessibilityLabel={s.count ? `${s.label}, ${s.count}` : s.label}
             style={({ pressed }) => ({
               flex: 1, minHeight: 56, paddingVertical: 6, alignItems: 'center', justifyContent: 'center', gap: 2,
-              borderRadius: radius.card - 8, backgroundColor: on ? forest : 'transparent', opacity: pressed ? 0.75 : 1,
+              borderRadius: radius.card - 8, backgroundColor: on ? ink : 'transparent', opacity: pressed ? 0.75 : 1,
             })}
           >
             <MaterialIcons name={s.icon} size={20} color={on ? white : s.color} />
@@ -114,7 +114,7 @@ export function Segmented({ options, value, onChange }: { options: { id: string;
             onPress={() => { if (!on) { tick(); onChange(o.id); } }}
             accessibilityRole="tab"
             accessibilityState={{ selected: on }}
-            style={({ pressed }) => ({ minHeight: 40, minWidth: 76, paddingHorizontal: space.md, alignItems: 'center', justifyContent: 'center', borderRadius: radius.pill, backgroundColor: on ? forest : 'transparent', opacity: pressed ? 0.75 : 1 })}
+            style={({ pressed }) => ({ minHeight: 40, minWidth: 76, paddingHorizontal: space.md, alignItems: 'center', justifyContent: 'center', borderRadius: radius.pill, backgroundColor: on ? ink : 'transparent', opacity: pressed ? 0.75 : 1 })}
           >
             <Text style={{ color: on ? white : c.text, fontSize: 14, fontWeight: on ? '700' : '600' }}>{o.label}</Text>
           </Pressable>
@@ -156,9 +156,18 @@ export function PresetChips({ items, value, onChange }: { items: { id: string; l
   );
 }
 
-export function SentimentPill({ tone }: { tone: Tone }) {
+// News stories with no clear tone show no pill. Social posts pass `labelNeutral` so "no clear tone" is stated, not hidden.
+export function SentimentPill({ tone, labelNeutral }: { tone: Tone; labelNeutral?: boolean }) {
   const { c } = useTheme();
   const t = toneColors(tone, c);
+  if (!t.label && labelNeutral) {
+    return (
+      <View style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: c.surface, borderRadius: radius.pill, paddingHorizontal: 8, paddingVertical: 2 }}>
+        <MaterialIcons name="remove" size={12} color={c.muted} />
+        <Text style={{ color: c.muted, fontSize: 11, fontWeight: '700' }}>Neutral</Text>
+      </View>
+    );
+  }
   if (!t.label) return null;
   return (
     <View style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: t.bg, borderRadius: radius.pill, paddingHorizontal: 8, paddingVertical: 2 }}>
@@ -185,8 +194,10 @@ function Thumb({ uri }: { uri?: string | null }) {
 }
 
 export function NewsCard({
-  headline, summary, tone, urgent, place, source, time, imageUrl, onShare, onTranslate, translated, onPress, onLongPress,
+  headline, summary, tone, urgent, place, source, time, imageUrl, onShare, onTranslate, translated, onPress, onLongPress, isNew, labelNeutral,
 }: {
+  isNew?: boolean;
+  labelNeutral?: boolean;
   onPress?: () => void;
   onLongPress?: () => void;
   headline: string; summary?: string | null; tone: Tone; urgent?: boolean; place?: string | null; source?: string | null; time?: string | null;
@@ -204,10 +215,15 @@ export function NewsCard({
         <View style={{ flex: 1, gap: 4 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.sm, minHeight: 22 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 }}>
-              <SentimentPill tone={tone} />
+              <SentimentPill tone={tone} labelNeutral={labelNeutral} />
               {urgent ? (
                 <View style={{ backgroundColor: c.dangerBg, borderRadius: radius.pill, paddingHorizontal: 8, paddingVertical: 2 }}>
-                  <Text style={{ color: c.danger, fontSize: 11, fontWeight: '700' }}>Urgent</Text>
+                  <Text style={{ color: c.danger, fontSize: 12, fontWeight: '700' }}>Urgent</Text>
+                </View>
+              ) : null}
+              {isNew ? (
+                <View accessible accessibilityLabel="New since your last visit" style={{ backgroundColor: c.accentBg, borderRadius: radius.pill, paddingHorizontal: 8, paddingVertical: 2 }}>
+                  <Text style={{ color: c.accentText, fontSize: 12, fontWeight: '700' }}>New</Text>
                 </View>
               ) : null}
             </View>
@@ -217,14 +233,24 @@ export function NewsCard({
               </Pressable>
             ) : null}
           </View>
-          <Text style={{ color: c.text, fontSize: 15, fontWeight: '700', lineHeight: 20 }} numberOfLines={3}>{headline}</Text>
-          {showSummary ? <Text style={{ color: c.muted, fontSize: 12, lineHeight: 16 }} numberOfLines={2}>{summary}</Text> : null}
+          {/* Only the text opens the story: the card also holds Share and Translate buttons, and buttons must not nest. */}
+          <Pressable
+            onPress={onPress}
+            onLongPress={onLongPress}
+            disabled={!onPress && !onLongPress}
+            accessibilityRole="button"
+            accessibilityLabel={`Open story: ${headline}`}
+            style={({ pressed }) => ({ gap: 4, opacity: pressed ? 0.7 : 1 })}
+          >
+            <Text style={{ color: c.text, fontSize: 15, fontWeight: '700', lineHeight: 22 }} numberOfLines={3}>{headline}</Text>
+            {showSummary ? <Text style={{ color: c.muted, fontSize: 13, lineHeight: 19 }} numberOfLines={2}>{summary}</Text> : null}
+          </Pressable>
           <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
             {place ? <MaterialIcons name="place" size={12} color={c.accent} /> : null}
-            <Text style={{ color: c.muted, fontSize: 11, flexShrink: 1 }} numberOfLines={1}>{meta.join('  |  ')}</Text>
+            <Text style={{ color: c.muted, fontSize: 12, flexShrink: 1 }} numberOfLines={1}>{meta.join('  ·  ')}</Text>
             {onTranslate ? (
               <Pressable onPress={onTranslate} hitSlop={10} accessibilityRole="button" accessibilityLabel={translated ? 'Show original' : 'Translate to Telugu'}>
-                <Text style={{ color: c.accentText, fontSize: 11, fontWeight: '700', marginLeft: 4 }}>{translated ? 'Original' : 'తెలుగు'}</Text>
+                <Text style={{ color: c.accentText, fontSize: 12, fontWeight: '700', marginLeft: 4 }}>{translated ? 'Original' : 'తెలుగు'}</Text>
               </Pressable>
             ) : null}
           </View>
@@ -232,12 +258,7 @@ export function NewsCard({
       </View>
     </Card>
   );
-  if (!onPress && !onLongPress) return card;
-  return (
-    <Pressable onPress={onPress} onLongPress={onLongPress} accessibilityRole="button" accessibilityLabel={`Open story: ${headline}`} style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}>
-      {card}
-    </Pressable>
-  );
+  return card;
 }
 
 export function NewsSkeleton() {

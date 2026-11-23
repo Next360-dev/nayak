@@ -1,154 +1,135 @@
 import React, { useMemo, useState } from 'react';
-import { FlatList, RefreshControl, Text, View, ViewStyle, TextStyle } from 'react-native';import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
+import { FlatList, RefreshControl, Text, View } from 'react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../src/hooks/useAuth';
-import { fetchInbox, fetchSent } from '../../src/api/shares';
+import { fetchInbox, fetchSent, updateStatus } from '../../src/api/shares';
 import { Share } from '../../src/types';
-import { Badge, Button, FilterChips, GroupedList, ScreenHeader, StickyBar, Toast } from '../../src/ui';
+import { Badge, Button, EmptyState, ErrorState, FilterChips, ScreenHeader, ShareRow, StickyBar, Toast } from '../../src/ui';
 import { Segmented } from '../../src/ui/NewsParts';
-import { hairline, space, surface, useTheme } from '../../src/theme';
+import { relativeTime } from '../../src/lib/time';
+import { space, surface, type, useTheme } from '../../src/theme';
 
-function relativeTime(s?: string | null) {
-  if (!s) return '';
-  const diff = (Date.now() - new Date(s).getTime()) / 1000;
-  if (Number.isNaN(diff)) return '';
-  if (diff < 60) return 'just now';
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  return `${Math.floor(diff / 86400)}d ago`;
+type Filter = 'all' | 'new' | 'acting' | 'done';
+const DONE_MESSAGE: Record<string, string> = { seen: 'Marked as seen', acting: "Marked as acting", done: 'Marked as done' };
+
+function InboxSkeleton() {
+  const { c } = useTheme();
+  const bar = (w: string, h = 12) => <View style={{ width: w as `${number}%`, height: h, borderRadius: 6, backgroundColor: c.surface }} />;
+  return (
+    <View style={{ padding: space.lg, gap: space.lg }} accessibilityLabel="Loading shares">
+      {[0, 1, 2, 3].map((i) => <View key={i} style={{ gap: space.sm }}>{bar('80%', 16)}{bar('45%')}</View>)}
+    </View>
+  );
 }
-
-const STATUS_BADGE: Record<string, { tone: 'attention' | 'neutral' | 'success'; label: string }> = {
-  new: { tone: 'attention', label: 'New' },
-  seen: { tone: 'neutral', label: 'Seen' },
-  acting: { tone: 'attention', label: 'Acting' },
-  done: { tone: 'success', label: 'Done' },
-};
 
 export default function InboxScreen() {
   const router = useRouter();
-  const { sent } = useLocalSearchParams<{ sent?: string }>();
+  const qc = useQueryClient();
+  const { sent, filter: filterParam, ts } = useLocalSearchParams<{ sent?: string; filter?: string; ts?: string }>();
   const { user } = useAuth();
   const { c } = useTheme();
   const canShare = !!user && user.role !== 'admin';
   const [view, setView] = useState<'received' | 'sent'>(sent ? 'sent' : 'received');
-  const [filter, setFilter] = useState<'all' | 'new' | 'acting' | 'done'>('all');
+  const [filter, setFilter] = useState<Filter>('all');
+  // A tap on a Home tile arrives as params. Apply each new request once (render-time sync, no effect needed).
+  const [appliedKey, setAppliedKey] = useState<string | undefined>();
+  const requestKey = filterParam || sent ? `${filterParam ?? ''}|${sent ?? ''}|${ts ?? ''}` : undefined;
+  if (requestKey && requestKey !== appliedKey) {
+    setAppliedKey(requestKey);
+    if (sent) setView('sent');
+    else { setView('received'); setFilter((['new', 'acting', 'done'] as const).find((f) => f === filterParam) ?? 'all'); }
+  }
   const [toast, setToast] = useState<{ message: string; visible: boolean } | null>(null);
 
-  const { data: inbox, isRefetching: refreshingInbox, refetch: refetchInbox } = useQuery({ queryKey: ['inbox'], queryFn: fetchInbox });
-  const { data: sentData } = useQuery({ queryKey: ['sent'], queryFn: fetchSent, enabled: view === 'sent' });
+  const inboxQ = useQuery({ queryKey: ['inbox'], queryFn: fetchInbox });
+  const sentQ = useQuery({ queryKey: ['sent'], queryFn: fetchSent, enabled: view === 'sent' });
 
-  const received = useMemo(() => {
-    let items = (inbox || []) as Share[];
-    if (filter !== 'all') items = items.filter((s) => s.status === filter);
-    return items.sort((a, b) => (a.priority === 'urgent' ? 0 : 1) - (b.priority === 'urgent' ? 0 : 1) || (new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()));
-  }, [inbox, filter]);
-
-  const header = (
-    <View style={{ paddingHorizontal: space.lg, paddingTop: space.sm, paddingBottom: space.sm, backgroundColor: surface, borderBottomWidth: 1, borderBottomColor: hairline }}>
-      <ScreenHeader title="Inbox" subtitle={received.length > 0 ? `${received.filter((s) => s.status === 'new').length} new · ${received.length} received` : 'No shares yet'} actions={[]} />
-    </View>
-  );
-
-  const receivedSections = [
-    {
-      rows: received.map((s) => ({
-        icon: 'mail-outline',
-        iconColor: s.status === 'new' ? c.accent : c.muted,
-        title: s.title,
-        value: `from ${s.sender} · ${relativeTime(s.created_at)}`,
-        onPress: () => router.push(`/share/${s.id}`),
-      })),
+  const mutate = useMutation({
+    mutationFn: ({ id, to }: { id: number; to: string }) => updateStatus(id, to),
+    onSuccess: (_d, v) => {
+      setToast({ message: DONE_MESSAGE[v.to] ?? 'Updated', visible: true });
+      void qc.invalidateQueries({ queryKey: ['inbox'] });
+      void qc.invalidateQueries({ queryKey: ['unread-count'] });
+      void qc.invalidateQueries({ queryKey: ['dashboard'] });
     },
-  ];
+    onError: () => setToast({ message: 'Could not update. Try again.', visible: true }),
+  });
 
-  const empty = (
-    <View style={{ paddingHorizontal: space.lg, paddingVertical: space.xl, alignItems: 'center' }}>
-      <TextFieldLike title="No shares yet" hint="When someone shares a story with you it appears here." />
-      {canShare ? <Button label="Share a story" onPress={() => router.push('/share/create')} /> : null}
+  const all = useMemo(() => (inboxQ.data || []) as Share[], [inboxQ.data]);
+  const received = useMemo(() => {
+    const items = filter === 'all' ? [...all] : all.filter((s) => s.status === filter);
+    return items.sort((a, b) => (a.priority === 'urgent' ? 0 : 1) - (b.priority === 'urgent' ? 0 : 1) || (new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()));
+  }, [all, filter]);
+  const newCount = all.filter((s) => s.status === 'new').length;
+
+  const list = view === 'received' ? received : (sentQ.data || []);
+  const loading = view === 'received' ? inboxQ.isLoading : sentQ.isLoading;
+  const failed = view === 'received' ? inboxQ.isError : sentQ.isError;
+  const refetch = () => { void (view === 'received' ? inboxQ.refetch() : sentQ.refetch()); };
+
+  const empty = loading ? <InboxSkeleton /> : failed ? (
+    <ErrorState message="Could not load your shares." onRetry={refetch} />
+  ) : view === 'received' && filter !== 'all' ? (
+    <EmptyState icon="filter-list" title="Nothing with this status" hint="Pick All to see every share." />
+  ) : (
+    <View style={{ paddingHorizontal: space.lg, paddingVertical: space.xl, alignItems: 'center', gap: space.md }}>
+      <EmptyState icon="mail-outline" title={view === 'received' ? 'Nothing waiting for you' : 'You have not shared anything yet'} hint={view === 'received' ? 'When someone shares a story with you it appears here.' : 'Open a story and tap Share.'} />
+      {canShare ? <Button label={user?.role === 'staff' ? 'Find a story to share' : 'Share a story'} onPress={() => router.push(user?.role === 'staff' ? '/(tabs)/news' : '/share/create')} /> : null}
     </View>
   );
 
   return (
     <View style={{ flex: 1, backgroundColor: surface }}>
-      {header}
+      <View style={{ backgroundColor: surface }}>
+        <ScreenHeader title="Inbox" subtitle={all.length > 0 ? `${newCount} new · ${all.length} received` : undefined} actions={[]} />
+      </View>
       <StickyBar>
         <Segmented options={[{ id: 'received', label: 'Received' }, { id: 'sent', label: 'Sent' }]} value={view} onChange={(v) => setView(v === 'received' ? 'received' : 'sent')} />
         {view === 'received' ? (
-          <FilterChips options={[{ key: 'all', label: 'All' }, { key: 'new', label: 'New' }, { key: 'acting', label: 'Acting' }, { key: 'done', label: 'Done' }]} value={filter} onChange={(k) => setFilter(k as any)} />
+          <FilterChips options={[{ key: 'all', label: 'All' }, { key: 'new', label: 'New', count: newCount }, { key: 'acting', label: 'Acting' }, { key: 'done', label: 'Done' }]} value={filter} onChange={(k) => setFilter(k as Filter)} />
         ) : null}
       </StickyBar>
       <FlatList
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: space.xl }}
+        contentContainerStyle={{ paddingBottom: space.xl, flexGrow: 1 }}
         showsVerticalScrollIndicator={false}
-        data={view === 'received' ? received : (sentData || [])}
+        data={loading || failed ? [] : (list as any[])}
         keyExtractor={(i) => String(i.id)}
-        renderItem={({ item }) => {
+        renderItem={({ item, index }) => {
           if (view === 'sent') {
             const s = item as any;
+            const recipients: { recipient: string; status: string }[] = Array.isArray(s.recipients) ? s.recipients : [];
             return (
-              <View style={[styles.row, { borderBottomWidth: 1, borderBottomColor: hairline }]}>
-                <Text style={[styles.rowTitle, { fontWeight: '700' }]}>{s.title}</Text>
-                <Text style={styles.rowMeta}>to {Array.isArray(s.recipients) ? s.recipients.length : 0} people</Text>
-                <View style={styles.rowChips}>
-                  {(Array.isArray(s.recipients) ? s.recipients : []).map((r: any) => (
-                    <Text key={r.recipient} style={[styles.chip, { borderColor: r.status === 'done' ? c.ok : c.border, color: r.status === 'done' ? c.ok : c.muted }]}>{r.recipient}: {r.status}</Text>
-                  ))}
+              <View style={{ paddingHorizontal: space.lg, paddingVertical: space.md + 2, gap: 6, borderBottomWidth: 1, borderBottomColor: c.border }}>
+                <Text style={[type.body, { color: c.text, fontWeight: '700' }]} numberOfLines={2}>{s.title}</Text>
+                <Text style={[type.caption, { color: c.muted }]}>{`to ${recipients.length} ${recipients.length === 1 ? 'person' : 'people'}${s.created_at ? ` · ${relativeTime(s.created_at)}` : ''}`}</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
+                  {recipients.map((r) => <Badge key={r.recipient} label={`${r.recipient}: ${r.status}`} tone={r.status === 'done' ? 'success' : r.status === 'new' ? 'attention' : 'neutral'} />)}
                 </View>
               </View>
             );
           }
           const s = item as Share;
-          const st = STATUS_BADGE[s.status] ?? STATUS_BADGE.seen;
           return (
-            <View style={[styles.row, { borderBottomWidth: 1, borderBottomColor: hairline }]}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
-                {s.status === 'new' ? <View style={[styles.dot, { backgroundColor: c.accent }]} /> : null}
-                <Text style={[styles.rowTitle, { fontWeight: '700' }]} numberOfLines={2}>{s.title}</Text>
-                {s.priority === 'urgent' ? <Badge label="Urgent" tone="danger" /> : null}
-                <Badge label={st.label} tone={st.tone} />
-              </View>
-              <Text style={styles.rowMeta}>from {s.sender} · {relativeTime(s.created_at)}</Text>
-              {(s.reply_count ?? 0) > 0 ? <Text style={[styles.rowMeta, { color: c.accentText, fontWeight: '700' }]}>{s.reply_count} replies</Text> : null}
-            </View>
+            <ShareRow
+              share={s}
+              last={index === received.length - 1}
+              busy={mutate.isPending}
+              onOpen={() => router.push(`/share/${s.id}`)}
+              onStatus={(to) => mutate.mutate({ id: s.id, to })}
+            />
           );
         }}
-        ListHeaderComponent={view === 'received' ? <GroupedList sections={receivedSections} /> : undefined}
+        ListFooterComponent={view === 'received' && received.length > 0 && newCount === 0 ? (
+          <View style={{ padding: space.xl, alignItems: 'center' }}>
+            <Text style={[type.caption, { color: c.muted }]}>You are all caught up.</Text>
+          </View>
+        ) : undefined}
         ListEmptyComponent={empty}
-        refreshControl={<RefreshControl refreshing={refreshingInbox} onRefresh={() => { void refetchInbox(); }} />}
+        refreshControl={<RefreshControl refreshing={inboxQ.isRefetching} onRefresh={refetch} tintColor={c.accent} />}
       />
-      {toast && <Toast message={toast.message} visible={toast.visible} onDismiss={() => setToast(null)} />}
+      {toast ? <Toast message={toast.message} visible={toast.visible} onDismiss={() => setToast(null)} /> : null}
     </View>
   );
 }
-
-function TextFieldLike({ title, hint }: { title: string; hint: string }) {
-  const { c } = useTheme();
-  return (
-    <View style={{ alignItems: 'center', gap: 4 }}>
-      <Text style={styles.emptyTitle}>{title}</Text>
-      <Text style={[styles.emptyHint, { color: c.muted }]}>{hint}</Text>
-    </View>
-  );
-}
-
-const styles: {
-  row: ViewStyle;
-  rowTitle: TextStyle;
-  rowMeta: TextStyle;
-  rowChips: ViewStyle;
-  chip: TextStyle;
-  emptyTitle: TextStyle;
-  emptyHint: TextStyle;
-  dot: ViewStyle;
-} = {
-  row: { paddingHorizontal: space.lg, paddingVertical: 16 },
-  rowTitle: { fontSize: 15, fontWeight: '700' as const },
-  rowMeta: { fontSize: 12, color: '#6B6B6B', marginTop: 2 },
-  rowChips: { flexDirection: 'row', gap: 6, marginTop: 4 },
-  chip: { fontSize: 11, paddingHorizontal: 6, paddingVertical: 2, borderWidth: 1, borderRadius: 999 },
-  emptyTitle: { fontSize: 18, fontWeight: '700' as const, color: '#171717', marginBottom: 4 },
-  emptyHint: { fontSize: 13, color: '#6B6B6B', textAlign: 'center', marginBottom: space.lg },
-  dot: { width: 8, height: 8, borderRadius: 4 },
-};

@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { apiFetch } from '../../src/api/client';
 import { UnreadCountResponse } from '../../src/types';
 import { useAuth } from '../../src/hooks/useAuth';
-import { useTheme } from '../../src/theme';
+import { sceneBackground, useTheme } from '../../src/theme';
 import FloatingTabBar from '../../src/ui/FloatingTabBar';
 
 function useUnread() {
@@ -32,11 +32,12 @@ export default function TabsLayout() {
     <Tabs
       tabBar={(props) => <FloatingTabBar {...(props as unknown as React.ComponentProps<typeof FloatingTabBar>)} />}
       screenOptions={{
-        headerShown: true,
+        // Every tab draws its own ScreenHeader (Users is the one exception, below), so the navigator header would double it.
+        headerShown: false,
         headerStyle: { backgroundColor: 'transparent' },
         headerShadowVisible: false,
         headerTitleStyle: { color: c.text, fontWeight: '700' },
-        sceneStyle: { backgroundColor: 'transparent' },
+        sceneStyle: { backgroundColor: sceneBackground },
       }}
     >
       <Tabs.Screen name="index" options={{ title: 'Home', headerShown: false }} />
@@ -44,7 +45,7 @@ export default function TabsLayout() {
       <Tabs.Screen name="inbox" options={{ title: 'Inbox', tabBarBadge: unread > 0 ? unread : undefined }} />
       <Tabs.Screen name="sent" options={{ title: 'Sent', href: null }} />
       <Tabs.Screen name="team" options={{ title: 'Team', href: show(isLeader || isStaff) }} />
-      <Tabs.Screen name="users" options={{ title: 'Users', href: show(isAdmin) }} />
+      <Tabs.Screen name="users" options={{ title: 'Users', headerShown: true, href: show(isAdmin) }} />
       <Tabs.Screen name="settings" options={{ title: 'More' }} />
     </Tabs>
   );

@@ -17,8 +17,8 @@ export function FilterChips({ options, value, onChange }: { options: Chip[]; val
               { backgroundColor: on ? c.accentBg : surface, borderColor: on ? c.accent : c.border, opacity: pressed ? 0.7 : 1 },
             ] as any)}
           >
-            <Text style={[styles.label, { color: on ? '#8A5A12' : c.text, fontWeight: on ? '700' : '600' }]}>{o.label}</Text>
-            {o.count ? <Text style={[styles.count, { color: on ? '#8A5A12' : c.muted }]}>{String(o.count)}</Text> : null}
+            <Text style={[styles.label, { color: on ? c.accentText : c.text, fontWeight: on ? '700' : '600' }]}>{o.label}</Text>
+            {o.count ? <Text style={[styles.count, { color: on ? c.accentText : c.muted }]}>{String(o.count)}</Text> : null}
           </Pressable>
         );
       })}

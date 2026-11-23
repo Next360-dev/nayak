@@ -42,7 +42,8 @@ export default function FloatingTabBar({ state, descriptors }: BottomTabBarProps
   const onPress = () => {
     if (focused) return;
     void Haptics.selectionAsync().catch(() => {});
-    router.push(`/(tabs)/${route.name === 'index' ? '' : route.name}` as any);
+    // navigate (not push) so switching tabs never grows the back stack
+    router.navigate(`/(tabs)/${route.name === 'index' ? '' : route.name}` as any);
   };
           return (
             <Pressable
@@ -59,12 +60,12 @@ export default function FloatingTabBar({ state, descriptors }: BottomTabBarProps
               <View>
                 <MaterialIcons name={ICONS[route.name] ?? 'circle'} size={24} color={focused ? c.accentText : c.muted} />
                 {badge ? (
-                  <View style={{ position: 'absolute', top: -4, right: -10, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: c.danger, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 }}>
-                    <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>{String(badge)}</Text>
+                  <View style={{ position: 'absolute', top: -4, right: -10, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: c.danger, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 }}>
+                    <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>{String(badge)}</Text>
                   </View>
                 ) : null}
               </View>
-              <Text style={{ fontSize: 11, fontWeight: focused ? '700' : '500', color: focused ? c.accentText : c.muted }} numberOfLines={1}>{label}</Text>
+              <Text style={{ fontSize: 12, fontWeight: focused ? '700' : '500', color: focused ? c.accentText : c.muted }} numberOfLines={1}>{label}</Text>
             </Pressable>
           );
         })}

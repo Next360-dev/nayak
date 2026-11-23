@@ -78,6 +78,7 @@ Auth = signed Bearer token only (header `X-User-*` is ignored). Role is re-read 
 - Shares: `GET /api/shares/targets` (staff: their leader; leader: their active staff; admin: empty), `GET /api/shares/inbox|sent|unread-count` (`sent` = everything for admin), `POST /api/shares` (admin 403; `all_mlas`/`district` always 403), `PATCH /api/shares/{id}/status` and `POST /api/shares/{id}/replies` (admin 403), `GET /api/shares/{id}/replies`
 - Social: `GET /api/social_media`, `GET /api/social_media/stats`, `POST /api/social_media/scrape`
 - Mobile: `POST|DELETE /api/devices`
+- Saved stories (private reading list, migration 011): `GET /api/saved`, `POST /api/saved` (saving twice is fine), `DELETE /api/saved/{id}` (own only). `GET /api/dashboard` shares block also carries `week` (received / handled / sent / sent_done, last 7 days, real rows only).
 - Home: `GET /api/dashboard` (shape depends on role: admin = system/attention/users/shares/leaders/activity; leaders = news/shares/team; staff = news/shares/leader)
 - Ops: `GET /api/health` (no token), `GET /api/automation/status`, `POST /api/automation/trigger` (admin)
 - Account: `POST /api/me/password` (change my own password; ends all other sessions), `GET|PUT /api/me/profile` (email, phone, alerts on/off, language), `POST /api/me/test-alert`, `GET /api/briefing?lang=` (+ `POST /api/briefing/email-me`)

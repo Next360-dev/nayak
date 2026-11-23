@@ -179,3 +179,6 @@ export { ScreenHeader } from './ScreenHeader';
 export { StickyBar } from './StickyBar';
 export { TextField } from './TextField';
 export { Toast } from './Toast';
+
+export { ShareRow } from './ShareRow';
+export { AuthShell } from './AuthShell';

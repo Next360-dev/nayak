@@ -3,7 +3,7 @@ import { Pressable, Text, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { WorkItem, WorkItemStatus } from '../types';
-import { forest, radius, space, surface, type, useTheme, white } from '../theme';
+import { ink, radius, space, surface, type, useTheme, white } from '../theme';
 import { relativeTime } from '../lib/time';
 
 type IconName = React.ComponentProps<typeof MaterialIcons>['name'];
@@ -110,13 +110,13 @@ export function Stepper({ status }: { status: WorkItemStatus }) {
   const index = { draft: 0, changes_requested: 1, submitted: 1, approved: 2, rejected: 2, closed: 3 }[status];
   const decisionLabel = status === 'approved' ? 'Approved' : status === 'rejected' ? 'Rejected' : status === 'changes_requested' ? 'Changes' : 'Decision';
   const steps = ['Draft', 'Sent', decisionLabel, 'Closed'];
-  const outcome = status === 'approved' ? tones.success.fg : status === 'rejected' ? tones.danger.fg : status === 'changes_requested' ? tones.attention.fg : forest;
+  const outcome = status === 'approved' ? tones.success.fg : status === 'rejected' ? tones.danger.fg : status === 'changes_requested' ? tones.attention.fg : ink;
   return (
     <View style={{ flexDirection: 'row', alignItems: 'flex-start' }} accessible accessibilityLabel={`Progress: ${STATUS[status].label}`}>
       {steps.map((s, i) => {
         const done = i < index || (i === index && status === 'closed');
         const current = i === index && status !== 'closed';
-        const color = i === 2 && i <= index ? outcome : forest;
+        const color = i === 2 && i <= index ? outcome : ink;
         const filled = done || current;
         return (
           <View key={s} style={{ flex: 1, alignItems: 'center' }}>
@@ -149,7 +149,7 @@ export function StatusChips({ options, value, onChange }: { options: { key: stri
             accessibilityRole="tab"
             accessibilityState={{ selected: on }}
             accessibilityLabel={`${o.label}, ${o.count}`}
-            style={({ pressed }) => ({ minHeight: 38, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, borderRadius: radius.pill, backgroundColor: on ? forest : surface, borderWidth: 1, borderColor: on ? forest : c.border, opacity: pressed ? 0.75 : 1 })}
+            style={({ pressed }) => ({ minHeight: 38, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, borderRadius: radius.pill, backgroundColor: on ? ink : surface, borderWidth: 1, borderColor: on ? ink : c.border, opacity: pressed ? 0.75 : 1 })}
           >
             <Text style={{ color: on ? white : c.text, fontSize: 13, fontWeight: on ? '700' : '600' }}>{o.label}</Text>
             <Text style={{ color: on ? white : c.muted, fontSize: 12, fontWeight: '600', fontVariant: ['tabular-nums'] }}>{o.count}</Text>
@@ -183,7 +183,7 @@ export function SegmentedRow<T extends string>({ options, value, onChange }: { o
             onPress={() => { if (!on) { void Haptics.selectionAsync().catch(() => {}); onChange(o.id); } }}
             accessibilityRole="tab"
             accessibilityState={{ selected: on }}
-            style={({ pressed }) => ({ flex: 1, minHeight: 42, alignItems: 'center', justifyContent: 'center', borderRadius: radius.pill, backgroundColor: on ? forest : 'transparent', opacity: pressed ? 0.75 : 1 })}
+            style={({ pressed }) => ({ flex: 1, minHeight: 42, alignItems: 'center', justifyContent: 'center', borderRadius: radius.pill, backgroundColor: on ? ink : 'transparent', opacity: pressed ? 0.75 : 1 })}
           >
             <Text style={{ color: on ? white : c.text, fontSize: 14, fontWeight: on ? '700' : '600' }}>{o.label}</Text>
           </Pressable>

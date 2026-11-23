@@ -1,24 +1,15 @@
 import React, { useCallback, useState } from 'react';
 import { KeyboardAvoidingView, Linking, ScrollView, Text, View } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchReplies, postReply, updateStatus } from '../../src/api/shares';
 import { Share, ShareReply } from '../../src/types';
 import { MAX_REPLY_CHARS } from '../../src/constants/config';
-import { Button, ScreenHeader, TextField, Toast } from '../../src/ui';
+import { Button, EmptyState, ScreenHeader, TextField, Toast } from '../../src/ui';
 import { Segmented } from '../../src/ui/NewsParts';
 import { TextLink } from '../../src/ui/HomeParts';
+import { relativeTime } from '../../src/lib/time';
 import { hairline, radius, shadowCard, space, surface, useTheme } from '../../src/theme';
-
-function relativeTime(s?: string | null) {
-  if (!s) return '';
-  const diff = (Date.now() - new Date(s).getTime()) / 1000;
-  if (Number.isNaN(diff)) return '';
-  if (diff < 60) return 'just now';
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  return `${Math.floor(diff / 86400)}d ago`;
-}
 
 const STATUS_LABELS: Record<string, string> = { new: 'New', seen: 'Seen', acting: 'Acting', done: 'Done' };
 
@@ -29,7 +20,8 @@ export default function ShareDetailScreen() {
   const { c } = useTheme();
   const [toast, setToast] = useState<{ message: string; visible: boolean } | null>(null);
 
-  const { data: shares } = useQuery({ queryKey: ['inbox'], queryFn: () => import('../../src/api/shares').then((m) => m.fetchInbox()) });
+  const router = useRouter();
+  const { data: shares, isLoading: loadingShares } = useQuery({ queryKey: ['inbox'], queryFn: () => import('../../src/api/shares').then((m) => m.fetchInbox()) });
   const share: Share | undefined = (shares || []).find((s) => s.id === shareId);
 
   const { data: replies, refetch: refetchReplies } = useQuery({
@@ -50,6 +42,8 @@ export default function ShareDetailScreen() {
     try {
       await updateStatus(shareId, next);
       void qc.invalidateQueries({ queryKey: ['inbox'] });
+      void qc.invalidateQueries({ queryKey: ['unread-count'] });
+      void qc.invalidateQueries({ queryKey: ['dashboard'] });
       showToast(`Marked ${STATUS_LABELS[next]}`);
     } catch {
       setStatus(prev);
@@ -70,7 +64,14 @@ export default function ShareDetailScreen() {
     finally { setSending(false); }
   };
 
-  if (!share) return null;
+  if (!share) {
+    return (
+      <View style={{ flex: 1 }}>
+        <ScreenHeader title="Share" onBack={() => router.back()} />
+        {loadingShares ? null : <View style={{ padding: space.lg }}><EmptyState icon="mail-outline" title="This share is not in your inbox" hint="It may belong to someone else or was removed." /></View>}
+      </View>
+    );
+  }
 
   const mine = (r: ShareReply) => r.sender === (share.sender || '');
   const statusSegments = [

@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import { Image, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { translate } from '../../src/api/news';
+import { fetchSaved, removeSaved, saveStory } from '../../src/api/saved';
 import { useAuth } from '../../src/hooks/useAuth';
 import { getStory } from '../../src/lib/storyCache';
 import { relativeTime } from '../../src/lib/time';
 import { radius, space, type, useTheme } from '../../src/theme';
-import { Badge, Card, EmptyState } from '../../src/ui';
+import { Badge, Button, Card, EmptyState } from '../../src/ui';
 import { ScreenHeader } from '../../src/ui/ScreenHeader';
 import { SentimentPill } from '../../src/ui/NewsParts';
 
@@ -29,7 +31,21 @@ export default function StoryScreen() {
   const { c } = useTheme();
   const { user } = useAuth();
   const story = getStory(id);
+  const qc = useQueryClient();
+  const savedQ = useQuery({ queryKey: ['saved'], queryFn: fetchSaved, enabled: !!user && user.role !== 'admin' });
+  const numericId = story && Number.isFinite(Number(story.id)) ? Number(story.id) : null;
+  const savedRow = (savedQ.data ?? []).find((x) => (numericId !== null && x.article_id === numericId) || (!!story?.url && x.url === story.url));
+  const toggleSave = useMutation({
+    mutationFn: async () => {
+      if (!story) return;
+      if (savedRow) await removeSaved(savedRow.id);
+      else await saveStory({ article_id: numericId, title: story.headline, url: story.url ?? null, summary: story.summary ?? null, place: story.place ?? null, source: story.source ?? null, tone: story.tone, published_at: story.time ?? null });
+    },
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: ['saved'] }); setNote(''); },
+    onError: () => setNote('Could not update your saved stories.'),
+  });
   const canShare = !!user && user.role !== 'admin';
+  const shareLabel = user?.role === 'staff' ? 'Send to my leader' : 'Send to my team';
 
   const [imgFailed, setImgFailed] = useState(false);
   const [tr, setTr] = useState<{ h: string; s: string } | null>(null);
@@ -40,10 +56,11 @@ export default function StoryScreen() {
     return (
       <View style={{ flex: 1 }}>
         <ScreenHeader title="Story" onBack={() => router.back()} />
-        <View style={{ padding: space.lg }}>
+        <View style={{ padding: space.lg, gap: space.md }}>
           <Card>
             <EmptyState icon="article" title="This story is no longer available" hint="Open it again from the News list." />
           </Card>
+          <Button label="Go to News" onPress={() => router.replace('/(tabs)/news')} />
         </View>
       </View>
     );
@@ -88,7 +105,7 @@ export default function StoryScreen() {
       <ScreenHeader
         title="Story"
         onBack={() => router.back()}
-        actions={canShare && firstUrl ? [{ icon: 'share', label: 'Share this story', onPress: share }] : undefined}
+        actions={canShare && (numericId !== null || firstUrl) ? [{ icon: savedRow ? 'bookmark' : 'bookmark-border', label: savedRow ? 'Remove from saved' : 'Save this story', onPress: () => toggleSave.mutate() }] : undefined}
       />
       <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: space.xl * 2, gap: space.md }} showsVerticalScrollIndicator={false}>
         <Card>
@@ -117,19 +134,30 @@ export default function StoryScreen() {
           </View>
         </Card>
 
-        {firstUrl ? (
+        {canShare && firstUrl ? (
           <Pressable
-            onPress={() => { void open(firstUrl); }}
+            onPress={share}
             accessibilityRole="button"
-            accessibilityLabel="Read the full story"
+            accessibilityLabel={shareLabel}
             style={({ pressed }) => ({ minHeight: 52, borderRadius: radius.pill, backgroundColor: c.accent, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.sm, opacity: pressed ? 0.85 : 1 })}
           >
-            <MaterialIcons name="open-in-new" size={20} color={c.onAccent} />
-            <Text style={[type.headline, { color: c.onAccent, fontWeight: '700' }]}>Read the full story</Text>
+            <MaterialIcons name="share" size={20} color={c.onAccent} />
+            <Text style={[type.headline, { color: c.onAccent, fontWeight: '700' }]}>{shareLabel}</Text>
           </Pressable>
         ) : null}
 
         <View style={{ flexDirection: 'row', gap: space.md }}>
+          {firstUrl ? (
+            <Pressable
+              onPress={() => { void open(firstUrl); }}
+              accessibilityRole="button"
+              accessibilityLabel="Read the full story"
+              style={({ pressed }) => ({ flex: 1, minHeight: 48, borderRadius: radius.pill, borderWidth: 1, borderColor: canShare ? c.border : c.accent, backgroundColor: canShare ? c.card : c.accent, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.sm, opacity: pressed ? 0.7 : 1 })}
+            >
+              <MaterialIcons name="open-in-new" size={20} color={canShare ? c.text : c.onAccent} />
+              <Text style={[type.body, { color: canShare ? c.text : c.onAccent, fontWeight: '600' }]}>Read full story</Text>
+            </Pressable>
+          ) : null}
           <Pressable
             onPress={() => { void toggleTranslate(); }}
             disabled={translating}
@@ -140,17 +168,6 @@ export default function StoryScreen() {
             <MaterialIcons name="translate" size={20} color={c.text} />
             <Text style={[type.body, { color: c.text, fontWeight: '600' }]}>{translating ? 'Translating' : tr ? 'Original' : 'తెలుగు'}</Text>
           </Pressable>
-          {canShare && firstUrl ? (
-            <Pressable
-              onPress={share}
-              accessibilityRole="button"
-              accessibilityLabel="Share with my team"
-              style={({ pressed }) => ({ flex: 1, minHeight: 48, borderRadius: radius.pill, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.sm, opacity: pressed ? 0.7 : 1 })}
-            >
-              <MaterialIcons name="share" size={20} color={c.text} />
-              <Text style={[type.body, { color: c.text, fontWeight: '600' }]}>Share</Text>
-            </Pressable>
-          ) : null}
         </View>
 
         {note ? <Text style={[type.caption, { color: c.danger, paddingHorizontal: space.xs }]} accessibilityLiveRegion="polite">{note}</Text> : null}

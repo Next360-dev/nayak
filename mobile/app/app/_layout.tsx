@@ -6,7 +6,7 @@ import { AuthProvider, useAuth } from '../src/hooks/useAuth';
 import { StatusBar } from 'expo-status-bar';
 import { AndroidImportance } from 'expo-notifications';
 import { LinearGradient } from 'expo-linear-gradient';
-import { veil } from '../src/theme';
+import { sceneBackground, veil } from '../src/theme';
 import { Image, Platform, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 // Configure notification handling
@@ -111,7 +111,7 @@ export default function RootLayout() {
         <AuthGate>
           <View style={[StyleSheet.absoluteFill, { backgroundColor: '#F8F6F2' }]}><Backdrop /></View>
           <StatusBar style="dark" />
-          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'transparent' } }} />
+          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: sceneBackground } }} />
         </AuthGate>
       </AuthProvider>
     </QueryClientProvider>

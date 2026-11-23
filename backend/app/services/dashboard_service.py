@@ -125,12 +125,35 @@ def _count(statuses) -> dict:
     return out
 
 
+def _within_days(iso: str | None, days: int) -> bool:
+    if not iso:
+        return False
+    try:
+        when = datetime.fromisoformat(iso)
+    except ValueError:
+        return False
+    if when.tzinfo is None:
+        when = when.replace(tzinfo=timezone.utc)
+    return datetime.now(timezone.utc) - when <= timedelta(days=days)
+
+
+def _week_block(inbox: list[dict], sent: list[dict]) -> dict:
+    """Last 7 days, counted from real rows only (nothing estimated)."""
+    return {
+        "received": sum(1 for i in inbox if _within_days(i.get("created_at"), 7)),
+        "handled": sum(1 for i in inbox if i["status"] == "done" and _within_days(i.get("updated_at"), 7)),
+        "sent": sum(1 for s in sent if _within_days(s.get("created_at"), 7)),
+        "sent_done": sum(1 for s in sent for r in s.get("recipients", []) if r["status"] == "done" and _within_days(r.get("updated_at"), 7)),
+    }
+
+
 def _shares_block(me: str) -> dict:
     inbox = share_repository.inbox(me, 200)
     sent = share_repository.sent(me, False, 200)
     inbox_counts = _count(i["status"] for i in inbox)
     sent_counts = _count(r["status"] for s in sent for r in s.get("recipients", []))
     return {
+        "week": _week_block(inbox, sent),
         "inbox": {**inbox_counts, "recent": [
             {"id": i["id"], "title": i["title"], "sender": i["sender"], "priority": i["priority"],
              "status": i["status"], "created_at": i["created_at"], "note": i.get("note"), "url": i.get("url")}

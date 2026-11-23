@@ -173,6 +173,8 @@ export interface DashboardShareRow {
 }
 
 export interface DashboardShares {
+  /** Last 7 days, counted from real share rows. */
+  week?: { received: number; handled: number; sent: number; sent_done: number };
   /** Admin dashboard: flat status counts across every share. */
   new?: number;
   seen?: number;

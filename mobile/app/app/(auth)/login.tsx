@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { login, ApiError } from '../../src/api/client';
 import { useAuth } from '../../src/hooks/useAuth';
+import { AuthShell, Button, TextField } from '../../src/ui';
+import { type, useTheme } from '../../src/theme';
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { c } = useTheme();
   const { signIn } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -43,39 +46,31 @@ export default function LoginScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Nayak</Text>
-      <Text style={styles.subtitle}>Sign in to continue</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Username"
-        autoCapitalize="none"
+    <AuthShell title="Sign in" subtitle="Use the username your administrator gave you.">
+      <TextField
+        label="Username"
         value={username}
         onChangeText={setUsername}
-        accessibilityLabel="Username"
+        autoCapitalize="none"
+        autoCorrect={false}
+        autoComplete="username"
+        textContentType="username"
+        returnKeyType="next"
       />
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        secureTextEntry
+      <TextField
+        label="Password"
         value={password}
         onChangeText={setPassword}
-        accessibilityLabel="Password"
+        secure
+        autoCapitalize="none"
+        autoComplete="password"
+        textContentType="password"
+        returnKeyType="go"
+        onSubmitEditing={onSubmit}
       />
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-      <TouchableOpacity style={styles.button} onPress={onSubmit} disabled={loading} accessibilityLabel="Sign in">
-        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Sign in</Text>}
-      </TouchableOpacity>
-    </View>
+      {error ? <Text style={[type.caption, { color: c.danger }]} accessibilityLiveRegion="polite">{error}</Text> : null}
+      <Button label="Sign in" onPress={onSubmit} loading={loading} />
+      <Text style={[type.caption, { color: c.muted, textAlign: 'center' }]}>Forgot your password? Ask your administrator to reset it.</Text>
+    </AuthShell>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, justifyContent: 'center', backgroundColor: 'transparent' },
-  title: { fontSize: 24, fontWeight: '700', marginBottom: 4, textAlign: 'center' },
-  subtitle: { fontSize: 14, color: '#666', marginBottom: 24, textAlign: 'center' },
-  input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 12, marginBottom: 12, fontSize: 16, minHeight: 44 },
-  button: { backgroundColor: '#1976d2', padding: 14, borderRadius: 8, alignItems: 'center', minHeight: 44 },
-  buttonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
-  error: { color: '#d32f2f', marginBottom: 12, textAlign: 'center' },
-});

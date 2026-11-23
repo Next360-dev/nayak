@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Switch, ActivityIndicator, Alert, FlatList } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchTargets, createShare } from '../../src/api/shares';
 import { useAuth } from '../../src/hooks/useAuth';
+import { Button, Card, EmptyState, ScreenHeader, TextField } from '../../src/ui';
+import { radius, space, type, useTheme } from '../../src/theme';
 
 // Sharing rules (the server enforces them too):
 //   staff -> only their own MLA/minister (preselected)
@@ -13,6 +15,8 @@ export default function CreateShareScreen() {
   const params = useLocalSearchParams<{ title?: string; url?: string }>();
   const router = useRouter();
   const { user } = useAuth();
+  const { c } = useTheme();
+  const qc = useQueryClient();
   const isAdmin = user?.role === 'admin';
   const isStaff = user?.role === 'staff';
   const { data: targets, isLoading } = useQuery({ queryKey: ['targets'], queryFn: fetchTargets, enabled: !isAdmin });
@@ -46,7 +50,9 @@ export default function CreateShareScreen() {
         priority,
         recipients: chosen,
       });
-      Alert.alert('Sent', 'Share created');
+      void qc.invalidateQueries({ queryKey: ['sent'] });
+      void qc.invalidateQueries({ queryKey: ['dashboard'] });
+      Alert.alert('Sent', chosen.length === 1 ? 'Your share was sent.' : `Your share was sent to ${chosen.length} people.`);
       router.back();
     } catch (e: any) {
       Alert.alert('Error', e?.message || 'Failed to send');
@@ -57,58 +63,69 @@ export default function CreateShareScreen() {
 
   if (isAdmin) {
     return (
-      <View style={styles.container}>
-        <Text style={[styles.hint, { padding: 16 }]}>The master admin monitors the system and does not share. Staff share to their MLA or minister.</Text>
+      <View style={{ flex: 1 }}>
+        <ScreenHeader title="Share" onBack={() => router.back()} />
+        <View style={{ padding: space.lg }}>
+          <Card><EmptyState icon="visibility" title="The master admin does not share" hint="Staff share to their MLA or minister." /></Card>
+        </View>
       </View>
     );
   }
 
+  const heading = isStaff ? 'Send to my leader' : 'Send to my team';
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ padding: 16 }}>
-      <Text style={styles.title}>{isStaff ? 'Send to my MLA / minister' : 'Send to my team'}</Text>
-      <TextInput style={styles.input} placeholder="Title" value={title} onChangeText={setTitle} />
-      <TextInput style={styles.input} placeholder="URL" value={url} onChangeText={setUrl} autoCapitalize="none" />
-      <TextInput style={styles.input} placeholder="Summary (optional)" value={summary} onChangeText={setSummary} multiline />
-      <TextInput style={styles.input} placeholder="Note (optional)" value={note} onChangeText={setNote} multiline />
-      <View style={styles.row}>
-        <Text>Urgent</Text>
-        <Switch value={priority === 'urgent'} onValueChange={(v) => setPriority(v ? 'urgent' : 'normal')} />
-      </View>
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ScreenHeader title={heading} onBack={() => router.back()} />
+      <ScrollView contentContainerStyle={{ padding: space.lg, gap: space.lg, paddingBottom: space.xl * 2 }} keyboardShouldPersistTaps="handled">
+        <TextField label="Title" value={title} onChangeText={setTitle} />
+        <TextField label="Link" value={url} onChangeText={setUrl} autoCapitalize="none" keyboardType="url" autoCorrect={false} />
+        <TextField label="Summary (optional)" value={summary} onChangeText={setSummary} multiline textAlignVertical="top" />
+        <TextField label="Note for them (optional)" value={note} onChangeText={setNote} multiline textAlignVertical="top" />
 
-      <Text style={styles.section}>Send to</Text>
-      {isLoading ? <ActivityIndicator /> : null}
-      {!isLoading && (targets || []).length === 0 ? (
-        <Text style={styles.hint}>{isStaff ? 'Your MLA or minister is not set up yet. Ask your admin.' : 'You have no active staff yet. Add them in the web app under "My team".'}</Text>
-      ) : null}
-      <FlatList
-        data={targets || []}
-        scrollEnabled={false}
-        keyExtractor={(t: any) => t.username}
-        renderItem={({ item }: { item: any }) => (
-          <TouchableOpacity style={styles.recip} onPress={() => toggleRecipient(item.username)} accessibilityLabel={`Send to ${item.username}`}>
-            <Text style={chosen.includes(item.username) ? styles.recipSelected : undefined}>
-              {chosen.includes(item.username) ? '✓ ' : ''}{item.name || item.politician_name || item.username} ({item.role})
-            </Text>
-          </TouchableOpacity>
-        )}
-      />
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 44 }}>
+          <View style={{ flex: 1 }}>
+            <Text style={[type.body, { color: c.text, fontWeight: '600' }]}>Mark as urgent</Text>
+            <Text style={[type.caption, { color: c.muted }]}>They are shown first.</Text>
+          </View>
+          <Switch
+            value={priority === 'urgent'}
+            onValueChange={(v) => setPriority(v ? 'urgent' : 'normal')}
+            trackColor={{ false: c.border, true: c.accent }}
+            accessibilityLabel="Mark as urgent"
+          />
+        </View>
 
-      <TouchableOpacity style={styles.send} onPress={onSend} disabled={sending || chosen.length === 0} accessibilityLabel="Send share">
-        {sending ? <ActivityIndicator color="#fff" /> : <Text style={styles.sendText}>Send</Text>}
-      </TouchableOpacity>
-    </ScrollView>
+        <View style={{ gap: space.sm }}>
+          <Text style={[type.headline, { color: c.text }]} accessibilityRole="header">Send to</Text>
+          {isLoading ? <Text style={[type.caption, { color: c.muted }]}>Loading</Text> : null}
+          {!isLoading && (targets || []).length === 0 ? (
+            <Text style={[type.body, { color: c.muted }]}>{isStaff ? 'Your MLA or minister is not set up yet. Ask your admin.' : 'You have no active staff yet. Add them in the web app under "My team".'}</Text>
+          ) : null}
+          {(targets || []).map((t: any) => {
+            const on = chosen.includes(t.username);
+            return (
+              <Pressable
+                key={t.username}
+                onPress={() => toggleRecipient(t.username)}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: on }}
+                accessibilityLabel={`Send to ${t.name || t.politician_name || t.username}`}
+                style={({ pressed }) => ({ minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: space.md, borderRadius: radius.row, borderWidth: 1, borderColor: on ? c.accent : c.border, backgroundColor: on ? c.accentBg : c.card, opacity: pressed ? 0.7 : 1 })}
+              >
+                <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: on ? c.accent : c.muted, backgroundColor: on ? c.accent : 'transparent', alignItems: 'center', justifyContent: 'center' }}>
+                  {on ? <Text style={{ color: c.onAccent, fontSize: 13, fontWeight: '700' }}>✓</Text> : null}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[type.body, { color: c.text, fontWeight: '600' }]}>{t.name || t.politician_name || t.username}</Text>
+                  <Text style={[type.caption, { color: c.muted }]}>{t.role}</Text>
+                </View>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        <Button label="Send" onPress={onSend} loading={sending} disabled={chosen.length === 0 || !title.trim() || !url.trim()} />
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: 'transparent' },
-  title: { fontSize: 20, fontWeight: '700', marginBottom: 12 },
-  input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10, marginBottom: 10, minHeight: 44 },
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
-  section: { fontSize: 16, fontWeight: '700', marginTop: 8, marginBottom: 8 },
-  recip: { padding: 10, minHeight: 44, justifyContent: 'center' },
-  recipSelected: { fontWeight: '700', color: '#1976d2' },
-  hint: { color: '#666', marginBottom: 10 },
-  send: { backgroundColor: '#1976d2', padding: 14, borderRadius: 8, alignItems: 'center', marginTop: 12, minHeight: 44 },
-  sendText: { color: '#fff', fontWeight: '600' },
-});

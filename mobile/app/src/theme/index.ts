@@ -16,8 +16,8 @@ export const palette = {
 
 export type Colors = typeof palette.light;
 
-// Selected state on the News reference (scope tabs, Latest/Archive).
-export const forest = '#14532D';
+// Selected state for segmented controls and progress: neutral ink, so gold stays reserved for actions.
+export const ink = '#171717';
 
 // Spacing is a 4-point grid. Corner rule: pills 999, cards 16, rows and inputs 12.
 export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24 };
@@ -25,8 +25,8 @@ export const radius = { row: 14, card: 22, pill: 999, bar: 3, line: 2, dot: 5, b
 export const type = {
   title: { fontSize: 26, fontWeight: '700' as const, letterSpacing: -0.3 },
   headline: { fontSize: 17, fontWeight: '600' as const },
-  body: { fontSize: 15, fontWeight: '400' as const },
-  caption: { fontSize: 12, fontWeight: '500' as const },
+  body: { fontSize: 15, fontWeight: '400' as const, lineHeight: 24 },
+  caption: { fontSize: 12, fontWeight: '500' as const, lineHeight: 18 },
   stat: { fontSize: 26, fontWeight: '700' as const, fontVariant: ['tabular-nums' as const] },
   display: { fontSize: 22, fontWeight: '700' as const, lineHeight: 31, letterSpacing: -0.2 },
   reading: { fontSize: 16, fontWeight: '400' as const, lineHeight: 26 },
@@ -55,3 +55,8 @@ export function useTheme(): { c: Colors; dark: boolean } {
   // Light only for now: the app sits on the shared background image.
   return { c: palette.light, dark: false };
 }
+
+// On a phone the screens sit on the shared backdrop picture, so scenes are transparent.
+// In a browser, inactive screens stay mounted behind the active one (they are only z-indexed, never hidden),
+// so a transparent scene lets the one below show through. On web only, make the active scene opaque.
+export const sceneBackground = (typeof document !== 'undefined' ? palette.light.bg : 'transparent') as string;

@@ -36,7 +36,7 @@ export function GroupedList({ sections }: { sections: Section[] }) {
                   accessibilityRole="button"
                   accessibilityLabel={row.title}
                   hitSlop={12}
-                  style={({ pressed }) => ([styles.row, { backgroundColor: pressed ? c.surface : 'white', borderBottomWidth: last ? 0 : 1, borderBottomColor: hairline }])}
+                  style={({ pressed }) => ([styles.row, { backgroundColor: pressed ? c.surface : c.card, borderBottomWidth: last ? 0 : 1, borderBottomColor: hairline }])}
                 >
                   {row.icon ? (
                     <View style={[styles.iconBox, { backgroundColor: row.iconColor ? `${row.iconColor}1F` : c.accentBg }]}>

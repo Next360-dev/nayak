@@ -1,4 +1,6 @@
 # STATE: Nayak
+Phase 4 UX + engagement (2026-11-23): U0-U6 done in code (see mobile/TASKS.md). 188 backend tests, web build, mobile tsc + lint all clean (0 warnings). NOT yet seen on a device or in screenshots; dark mode, morning push, web pass still open.
+Social crawl (2026-11-23): fixed (0 -> 36 posts for Achampet MLA), mobile Social tab Refresh added. 194 backend tests. Crawl is manual-only (no schedule).
 Phase 3 F0 (2026-11-18): tokens cleanup complete - tints/flag/white in src/theme; HomeParts.tsx avatar borderRadius 24 -> radius.avatar; index.tsx uses tints; tsc + eslint clean, grep clean on touched files.
 
 Overall: web build 100%; mobile app code complete (M0-M6.4). One manual step left: M6.5 EAS preview build (needs user yes). Phase 2 (web parity + single login): M7-M13.3 complete (19/21 tasks, ~90%) - 158 backend tests, web build clean, mobile tsc + lint clean.

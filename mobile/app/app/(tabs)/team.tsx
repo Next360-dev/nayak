@@ -1,21 +1,82 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { FlatList, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../src/hooks/useAuth';
-import { fetchBoard, createTask, updateTask, addTaskNote } from '../../src/api/board';
-import { Badge, Button, GroupedList, ScreenHeader, StickyBar, TextField, Toast } from '../../src/ui';
+import { createTask, fetchBoard, fetchTeamBriefing, resetTeamBriefing, saveTeamBriefing } from '../../src/api/board';
+import { Button, Card, EmptyState, ErrorState, ScreenHeader, SectionHeader, StatStrip, TextField, Toast } from '../../src/ui';
 import { Segmented } from '../../src/ui/NewsParts';
-import { hairline, radius, shadowCard, space, surface, useTheme } from '../../src/theme';
+import { isOverdue, TaskCard } from '../../src/ui/TeamParts';
+import { space, surface, type, useTheme } from '../../src/theme';
 
-function relativeTime(s?: string | null) {
-  if (!s) return '';
-  const diff = (Date.now() - new Date(s).getTime()) / 1000;
-  if (Number.isNaN(diff)) return '';
-  if (diff < 60) return 'just now';
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  return `${Math.floor(diff / 86400)}d ago`;
+type Col = 'todo' | 'doing' | 'done';
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+type BriefingData = NonNullable<Awaited<ReturnType<typeof fetchTeamBriefing>>>;
+
+// Mounted only after the server text has loaded, and re-keyed on every save/reset, so the box always starts from the real text.
+function BriefingEditor({ lang, data, onToast }: { lang: 'en' | 'te'; data: BriefingData; onToast: (m: string) => void }) {
+  const { c } = useTheme();
+  const qc = useQueryClient();
+  const [text, setText] = useState(data.text);
+  const [busy, setBusy] = useState(false);
+  const dirty = text.trim() !== data.text.trim();
+  const run = async (fn: () => Promise<unknown>, ok: string) => {
+    setBusy(true);
+    try { await fn(); await qc.invalidateQueries({ queryKey: ['briefing', lang] }); onToast(ok); } catch { onToast('Could not save the briefing'); } finally { setBusy(false); }
+  };
+  return (
+    <>
+      <Text style={[type.caption, { color: c.muted }]}>{data.edited ? `Edited${data.edited_by ? ` by ${data.edited_by}` : ''}` : 'Written automatically from today’s news'}</Text>
+      <TextField label="Briefing" value={text} onChangeText={setText} multiline textAlignVertical="top" />
+      <View style={{ flexDirection: 'row', gap: space.sm }}>
+        <View style={{ flex: 1 }}><Button label="Save" onPress={() => { void run(() => saveTeamBriefing(lang, text.trim()), 'Briefing saved'); }} loading={busy} disabled={!dirty || !text.trim()} /></View>
+        {data.edited ? <View style={{ flex: 1 }}><Button label="Reset" variant="secondary" onPress={() => { void run(() => resetTeamBriefing(lang), 'Back to automatic'); }} disabled={busy} /></View> : null}
+      </View>
+    </>
+  );
+}
+
+function Briefing({ onToast }: { onToast: (m: string) => void }) {
+  const { c } = useTheme();
+  const [lang, setLang] = useState<'en' | 'te'>('en');
+  const q = useQuery({ queryKey: ['briefing', lang], queryFn: () => fetchTeamBriefing(lang) });
+  return (
+    <Card style={{ padding: space.lg, gap: space.md }}>
+      <Segmented options={[{ id: 'en', label: 'English' }, { id: 'te', label: 'తెలుగు' }]} value={lang} onChange={(v) => setLang(v === 'te' ? 'te' : 'en')} />
+      {q.isLoading ? <Text style={[type.caption, { color: c.muted }]}>Loading</Text> : q.isError || !q.data ? <Text style={[type.caption, { color: c.danger }]}>Could not load the briefing.</Text> : (
+        <BriefingEditor key={`${lang}-${q.data.edited}-${q.data.updated_at ?? ''}`} lang={lang} data={q.data} onToast={onToast} />
+      )}
+    </Card>
+  );
+}
+
+function AddTask({ members, onDone, onToast }: { members: string[]; onDone: () => void; onToast: (m: string) => void }) {
+  const [title, setTitle] = useState('');
+  const [note, setNote] = useState('');
+  const [due, setDue] = useState('');
+  const [who, setWho] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const dueBad = due.trim() !== '' && !DATE_RE.test(due.trim());
+  const save = async () => {
+    setBusy(true);
+    try {
+      await createTask({ title: title.trim(), note: note.trim() || null, due_date: due.trim() || null, assigned_to: who });
+      onToast('Task added');
+      onDone();
+    } catch { onToast('Could not add the task'); } finally { setBusy(false); }
+  };
+  return (
+    <Card style={{ padding: space.lg, gap: space.md }}>
+      <TextField label="Task" value={title} onChangeText={setTitle} maxLength={200} />
+      <TextField label="Detail (optional)" value={note} onChangeText={setNote} multiline textAlignVertical="top" />
+      <TextField label="Due date (YYYY-MM-DD, optional)" value={due} onChangeText={setDue} error={dueBad ? 'Use the form 2026-12-31' : undefined} autoCapitalize="none" keyboardType="numbers-and-punctuation" />
+      {members.length > 0 ? (
+        <Segmented options={[{ id: '', label: 'Nobody' }, ...members.slice(0, 3).map((m) => ({ id: m, label: m }))]} value={who ?? ''} onChange={(v) => setWho(v || null)} />
+      ) : null}
+      <Button label="Add task" onPress={save} loading={busy} disabled={!title.trim() || dueBad} />
+    </Card>
+  );
 }
 
 export default function TeamScreen() {
@@ -23,159 +84,71 @@ export default function TeamScreen() {
   const { user } = useAuth();
   const { c } = useTheme();
   const isLeader = user?.role === 'mla' || user?.role === 'minister';
-  const canManage = user?.role === 'staff';
-  const leaderName = user?.politician_name || user?.username || '';
-  const members = (user as any)?.members || [];
-
-  const { data: board, isError, refetch } = useQuery({ queryKey: ['board'], queryFn: () => import('../../src/api/board').then((m) => m.fetchBoard()) });
+  const board = useQuery({ queryKey: ['board'], queryFn: fetchBoard });
+  const qc = useQueryClient();
+  const [col, setCol] = useState<Col>('todo');
+  const [adding, setAdding] = useState(false);
   const [toast, setToast] = useState<{ message: string; visible: boolean } | null>(null);
-  const [briefingLang, setBriefingLang] = useState<'en' | 'te'>('en');
-
   const showToast = useCallback((m: string) => setToast({ message: m, visible: true }), []);
+  const reload = useCallback(() => { void qc.invalidateQueries({ queryKey: ['board'] }); void qc.invalidateQueries({ queryKey: ['dashboard'] }); }, [qc]);
 
-  const tasks = (board?.tasks || []) as any[];
-  const counts = useMemo(() => {
-    const c = { todo: 0, doing: 0, done: 0 };
-    for (const t of tasks) { const s = t.status as keyof typeof c; c[s] = (c[s] || 0) + 1; }
-    return c;
-  }, [tasks]);
-  const overdue = tasks.filter((t) => t.status !== 'done' && t.due_date && new Date(t.due_date) < new Date()).length;
-
-  const byStatus = useMemo(() => ({
-    todo: tasks.filter((t) => t.status === 'todo'),
-    doing: tasks.filter((t) => t.status === 'doing'),
-    done: tasks.filter((t) => t.status === 'done'),
+  const tasks = useMemo(() => board.data?.tasks ?? [], [board.data]);
+  const members = board.data?.members ?? [];
+  const canManage = !!board.data?.can_manage;
+  const counts = useMemo(() => ({
+    todo: tasks.filter((t) => t.status === 'todo').length,
+    doing: tasks.filter((t) => t.status === 'doing').length,
+    done: tasks.filter((t) => t.status === 'done').length,
+    overdue: tasks.filter(isOverdue).length,
   }), [tasks]);
-
-  const moveTask = useCallback(async (taskId: number, status: 'todo' | 'doing' | 'done') => {
-    try {
-      await updateTask(taskId, { status });
-      void refetch();
-      showToast(`Moved to ${status}`);
-    } catch { showToast('Failed to move task'); }
-  }, [refetch, showToast]);
-
-  const addNote = useCallback(async (taskId: number, body: string) => {
-    try {
-      await addTaskNote(taskId, body);
-      void refetch();
-      showToast('Note added');
-    } catch { showToast('Failed to add note'); }
-  }, [refetch, showToast]);
-
-  const saveBriefing = useCallback(async (body: string) => {
-    try {
-      const m = await import('../../src/api/board');
-      await m.saveTeamBriefing(briefingLang, body);
-      showToast('Briefing saved');
-    } catch { showToast('Failed to save'); }
-  }, [briefingLang, showToast]);
-
-  const resetBriefing = useCallback(async () => {
-    try {
-      const m = await import('../../src/api/board');
-      await m.resetTeamBriefing(briefingLang);
-      showToast('Reset to automatic');
-    } catch { showToast('Failed to reset'); }
-  }, [briefingLang, showToast]);
-
-  const header = (
-    <View style={{ paddingHorizontal: space.lg, paddingTop: space.sm, paddingBottom: space.sm, backgroundColor: surface, borderBottomWidth: 1, borderBottomColor: hairline }}>
-      <ScreenHeader title="Team" actions={isLeader ? [{ icon: 'groups', label: 'My team', onPress: () => router.push('/my-team') }] : undefined} />
-    </View>
-  );
-
-  const summary = (
-    <View style={{ marginHorizontal: space.lg, marginTop: space.sm }}>
-      <View style={[styles.summaryCard, { boxShadow: shadowCard }]}>
-        <Text style={styles.summaryTitle}>Team of {leaderName}</Text>
-        <View style={styles.avatarRow}>
-          {members.slice(0, 5).map((m: any) => (
-            <View key={m} style={styles.avatar} />
-          ))}
-          {members.length > 5 ? <Text style={styles.plusCount}>+{members.length - 5}</Text> : null}
-        </View>
-        <Text style={styles.summaryCaption}>{canManage ? 'You manage tasks' : 'You can view tasks and add notes'}</Text>
-      </View>
-    </View>
-  );
-
-  const column = (id: 'todo' | 'doing' | 'done', title: string, color: string) => {
-    const items = byStatus[id];
-    return (
-      <View key={id} style={{ marginHorizontal: space.lg, marginTop: space.sm }}>
-        <View style={{ flexDirection: 'row' as const, alignItems: 'center', gap: space.sm, marginBottom: space.sm }}>
-          <Text style={styles.colTitle}>{title}</Text>
-          <Text style={[styles.colCount, { color }]}>{items.length}</Text>
-        </View>
-        {items.length === 0 ? (
-          <View style={[styles.emptyCard, { boxShadow: shadowCard }]}>
-            <Text style={styles.emptyText}>Nothing here yet</Text>
-          </View>
-        ) : (
-          <GroupedList sections={[{
-            rows: items.map((t) => ({
-              icon: 'checkbox-outline',
-              iconColor: c.muted,
-              title: t.title,
-              value: `${t.assigned_to || 'Unassigned'} · due ${relativeTime(t.due_date)}`,
-            }))
-          }]} />
-        )}
-      </View>
-    );
-  };
-
-  const briefing = canManage;
+  const shown = tasks.filter((t) => t.status === col);
+  const leaderName = board.data?.leader || user?.politician_name || user?.username || '';
 
   return (
-    <View style={{ flex: 1, backgroundColor: surface }}>
-      {header}
-      {summary}
-      <StickyBar>
-        <Segmented options={[{ id: 'todo', label: 'To do' }, { id: 'doing', label: 'Doing' }, { id: 'done', label: 'Done' }]} value='todo' onChange={() => { }} />
-      </StickyBar>
-      <FlatList
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: space.xl }}
-        showsVerticalScrollIndicator={false}
-        data={[{ id: 'todo' }, { id: 'doing' }, { id: 'done' }]}
-        keyExtractor={(i) => i.id}
-        renderItem={({ item }) => column(item.id as 'todo' | 'doing' | 'done',
-          item.id === 'todo' ? 'To do' : item.id === 'doing' ? 'Doing' : 'Done',
-          item.id === 'todo' ? c.text : item.id === 'doing' ? c.accent : c.ok)}
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: surface }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ScreenHeader
+        title="Team board"
+        subtitle={board.data ? `${leaderName} · ${members.length} ${members.length === 1 ? 'member' : 'members'}` : undefined}
+        actions={isLeader ? [{ icon: 'groups', label: 'Manage my team', onPress: () => router.push('/my-team') }] : undefined}
       />
-      {canManage ? (
-        <View style={{ paddingHorizontal: space.lg, marginTop: space.sm }}>
-          <Button label="Add task" onPress={() => { }} />
-        </View>
-      ) : null}
-      {briefing ? (
-        <View style={{ marginHorizontal: space.lg, marginTop: space.sm }}>
-          <View style={[styles.summaryCard, { boxShadow: shadowCard }]}>
-            <Segmented options={[{ id: 'en', label: 'English' }, { id: 'te', label: 'తెలుగు' }]} value={briefingLang} onChange={(v) => setBriefingLang(v as 'en' | 'te')} />
-            <TextField label="Briefing" value="" onChangeText={(b) => { }} multiline minHeight={104} />
-            <View style={{ flexDirection: 'row', gap: space.sm, marginTop: space.sm }}>
-              <Button label="Save" onPress={() => saveBriefing('')} variant="primary" />
-              <Button label="Reset to automatic" onPress={resetBriefing} variant="secondary" />
-            </View>
-          </View>
-        </View>
-      ) : null}
-      {toast && <Toast message={toast.message} visible={toast.visible} onDismiss={() => setToast(null)} />}
-    </View>
+      {board.isLoading ? <View style={{ padding: space.lg }}><Text style={[type.body, { color: c.muted }]}>Loading</Text></View> : board.isError ? (
+        <ErrorState message="Could not load the team board." onRetry={() => { void board.refetch(); }} />
+      ) : (
+        <ScrollView
+          contentContainerStyle={{ padding: space.lg, gap: space.md, paddingBottom: space.xl * 2 }}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={board.isRefetching} onRefresh={() => { void board.refetch(); }} tintColor={c.accent} />}
+        >
+          <StatStrip items={[
+            { label: 'to do', value: counts.todo },
+            { label: 'doing', value: counts.doing },
+            { label: 'done', value: counts.done },
+            { label: 'overdue', value: counts.overdue, tone: counts.overdue > 0 ? 'danger' : undefined },
+          ]} />
+
+          {canManage ? (adding ? <AddTask members={members} onToast={showToast} onDone={() => { setAdding(false); reload(); }} /> : <Button label="Add task" onPress={() => setAdding(true)} />) : (
+            <Text style={[type.caption, { color: c.muted }]}>You can read tasks and add notes. Your staff manage the tasks.</Text>
+          )}
+
+          <Segmented options={[{ id: 'todo', label: `To do ${counts.todo}` }, { id: 'doing', label: `Doing ${counts.doing}` }, { id: 'done', label: `Done ${counts.done}` }]} value={col} onChange={(v) => setCol(v as Col)} />
+          <Card>
+            {shown.length === 0 ? (
+              <EmptyState icon="check-circle-outline" title={col === 'todo' ? 'Nothing to do' : col === 'doing' ? 'Nothing in progress' : 'Nothing finished yet'} hint={canManage && col === 'todo' ? 'Add a task above.' : undefined} />
+            ) : shown.map((t) => (
+              <TaskCard key={t.id} task={t} members={members} canManage={canManage} onChanged={reload} onToast={showToast} />
+            ))}
+          </Card>
+
+          {canManage ? (
+            <>
+              <SectionHeader title="Daily briefing" />
+              <Briefing onToast={showToast} />
+            </>
+          ) : null}
+        </ScrollView>
+      )}
+      {toast ? <Toast message={toast.message} visible={toast.visible} onDismiss={() => setToast(null)} /> : null}
+    </KeyboardAvoidingView>
   );
 }
-
-const styles = {
-  summaryCard: { padding: space.lg, borderRadius: radius.card, borderWidth: 1, borderColor: hairline, backgroundColor: surface },
-  summaryTitle: { fontSize: 15, fontWeight: '700' as const, color: '#171717', marginBottom: space.sm },
-  avatarRow: { flexDirection: 'row' as const, gap: 6, marginBottom: 4 },
-  avatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#F2EEE6' },
-  plusCount: { fontSize: 13, color: '#171717' },
-  summaryCaption: { fontSize: 13, color: '#6B6B6B' },
-  colTitle: { fontSize: 15, fontWeight: '700' as const },
-  colCount: { fontSize: 13, fontWeight: '700' as const },
-  emptyCard: { padding: space.lg, borderRadius: radius.card, borderWidth: 1, borderColor: hairline, backgroundColor: surface, alignItems: 'center' as const, justifyContent: 'center' as const, minHeight: 120 },
-  emptyText: { fontSize: 14, color: '#6B6B6B' },
-};

@@ -9,7 +9,7 @@ type Icon = React.ComponentProps<typeof MaterialIcons>['name'];
 
 
 // Three tricolour bars, slightly tilted. A simple mark, not a flag.
-function BrandMark() {
+export function BrandMark() {
   return (
     <View style={{ width: 34, height: 26, justifyContent: 'center', gap: 3, transform: [{ rotate: '-14deg' }] }} accessibilityElementsHidden>
       <View style={{ height: 6, borderRadius: radius.bar, backgroundColor: flag.saffron }} />
@@ -81,40 +81,6 @@ export function Hero({
   );
 }
 
-export type QuickAction = { icon: Icon; label: string; color: string; onPress: () => void; count?: number };
-
-export function QuickActions({ actions }: { actions: QuickAction[] }) {
-  const { c } = useTheme();
-  return (
-    <View
-      style={{
-        flexDirection: 'row', marginHorizontal: space.lg, marginTop: space.lg, backgroundColor: c.card, borderRadius: radius.card + 4,
-        borderWidth: 1, borderColor: c.border, paddingVertical: space.lg, boxShadow: '0 8px 24px rgba(23,23,23,0.08)',
-      }}
-    >
-      {actions.map((a, i) => (
-        <Pressable
-          key={a.label}
-          onPress={a.onPress}
-          accessibilityRole="button"
-          accessibilityLabel={a.count ? `${a.label}, ${a.count} new` : a.label}
-          style={({ pressed }) => ({ flex: 1, alignItems: 'center', gap: space.sm, borderLeftWidth: i === 0 ? 0 : 1, borderLeftColor: c.border, opacity: pressed ? 0.6 : 1, minHeight: 44 })}
-        >
-          <View style={{ width: 52, height: 52, borderRadius: radius.tileLg, backgroundColor: `${a.color}22`, alignItems: 'center', justifyContent: 'center' }}>
-            <MaterialIcons name={a.icon} size={26} color={a.color} />
-            {a.count ? (
-              <View style={{ position: 'absolute', top: -5, right: -5, minWidth: 18, height: 18, borderRadius: radius.badge, backgroundColor: c.danger, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 }}>
-                <Text style={{ color: white, fontSize: 11, fontWeight: '700' }}>{a.count}</Text>
-              </View>
-            ) : null}
-          </View>
-          <Text style={{ color: c.text, fontSize: 13, fontWeight: '600', textAlign: 'center', paddingHorizontal: 2 }} numberOfLines={2}>{a.label}</Text>
-        </Pressable>
-      ))}
-    </View>
-  );
-}
-
 export function SectionTitle({ title, right }: { title: string; right?: React.ReactNode }) {
   const { c } = useTheme();
   return (
@@ -135,10 +101,10 @@ export function TextLink({ label, onPress }: { label: string; onPress: () => voi
   );
 }
 
-export function SummaryCard({ icon, value, label, tone }: { icon: Icon; value: number; label: string; tone: 'ok' | 'danger' | 'attention' }) {
+export function SummaryCard({ icon, value, label, tone }: { icon: Icon; value: number; label: string; tone: 'ok' | 'danger' | 'attention' | 'neutral' }) {
   const { c } = useTheme();
-  const fg = tone === 'ok' ? c.ok : tone === 'danger' ? c.danger : c.attention;
-  const bg = tone === 'ok' ? c.okBg : tone === 'danger' ? c.dangerBg : c.attentionBg;
+  const fg = tone === 'ok' ? c.ok : tone === 'danger' ? c.danger : tone === 'attention' ? c.attention : c.text;
+  const bg = tone === 'ok' ? c.okBg : tone === 'danger' ? c.dangerBg : tone === 'attention' ? c.attentionBg : c.surface;
   return (
     <View accessible accessibilityLabel={`${value} ${label}`} style={{ flex: 1, backgroundColor: bg, borderRadius: radius.summary, padding: space.md + 2, gap: space.sm, minHeight: 104 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
@@ -197,6 +163,98 @@ export function ReachCard({ metrics }: { metrics: ReachMetric[] }) {
           <Text style={{ color: c.muted, fontSize: 12 }}>{m.label}</Text>
         </View>
       ))}
+    </View>
+  );
+}
+
+export type BriefTile = { icon: Icon; value: number; label: string; tone: 'danger' | 'attention' | 'neutral'; onPress: () => void };
+
+// The top of Home: one sentence that says what needs the user, then three tiles that open the matching list.
+// A tile is coloured only when its number is above zero, so colour always means "something to do".
+export function StatusBrief({ headline, sub, allClear, date, tiles }: { headline: string; sub?: string; allClear: boolean; date: string; tiles: BriefTile[] }) {
+  const { c } = useTheme();
+  return (
+    <View style={{ marginHorizontal: space.lg, marginTop: space.lg, gap: space.md }}>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space.md }}>
+        <View style={{ width: 36, height: 36, borderRadius: radius.pill, backgroundColor: allClear ? c.okBg : c.attentionBg, alignItems: 'center', justifyContent: 'center', marginTop: 2 }}>
+          <MaterialIcons name={allClear ? 'check' : 'notifications-active'} size={20} color={allClear ? c.ok : c.attention} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: c.text, fontSize: 22, fontWeight: '700', letterSpacing: -0.3, lineHeight: 28 }} accessibilityRole="header">{headline}</Text>
+          {sub ? <Text style={{ color: c.muted, fontSize: 14, lineHeight: 20, marginTop: 2 }}>{sub}</Text> : null}
+        </View>
+        <Text style={{ color: c.muted, fontSize: 12, marginTop: 6 }}>{date}</Text>
+      </View>
+      <View style={{ flexDirection: 'row', gap: space.md }}>
+        {tiles.map((t) => {
+          const active = t.value > 0 && t.tone !== 'neutral';
+          const fg = active ? (t.tone === 'danger' ? c.danger : c.attention) : c.text;
+          const bg = active ? (t.tone === 'danger' ? c.dangerBg : c.attentionBg) : c.card;
+          return (
+            <Pressable
+              key={t.label}
+              onPress={t.onPress}
+              accessibilityRole="button"
+              accessibilityLabel={`${t.value} ${t.label}. Open`}
+              style={({ pressed }) => ({ flex: 1, minHeight: 104, backgroundColor: bg, borderRadius: radius.summary, borderWidth: 1, borderColor: active ? 'transparent' : c.border, padding: space.md + 2, justifyContent: 'space-between', opacity: pressed ? 0.75 : 1 })}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <MaterialIcons name={t.icon} size={22} color={active ? fg : c.muted} />
+                <MaterialIcons name="chevron-right" size={20} color={active ? fg : c.muted} />
+              </View>
+              <View>
+                <Text style={{ color: fg, fontSize: 30, fontWeight: '700', fontVariant: ['tabular-nums'] }}>{t.value}</Text>
+                <Text style={{ color: active ? fg : c.muted, fontSize: 13, fontWeight: '500' }} numberOfLines={2}>{t.label}</Text>
+              </View>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+export type ShortcutTile = { icon: Icon; label: string; sub: string; onPress: () => void; primary?: boolean; badge?: number; alert?: boolean };
+
+// Shortcuts as a 2x2 grid of cards. Each says something live (a count or a status), not just a name.
+// One tile can be primary (gold fill): that is the thing the user most likely came to do.
+export function ShortcutGrid({ tiles }: { tiles: ShortcutTile[] }) {
+  const { c } = useTheme();
+  return (
+    <View style={{ marginHorizontal: space.lg, marginTop: space.lg, flexDirection: 'row', flexWrap: 'wrap', gap: space.md }}>
+      {tiles.map((t) => {
+        const fg = t.primary ? c.onAccent : c.text;
+        const subColor = t.primary ? c.onAccent : t.alert ? c.danger : c.muted;
+        return (
+          <Pressable
+            key={t.label}
+            onPress={t.onPress}
+            accessibilityRole="button"
+            accessibilityLabel={`${t.label}. ${t.sub}`}
+            style={({ pressed }) => ({
+              width: '48%', flexGrow: 1, minHeight: 92, borderRadius: radius.summary, padding: space.md + 2, gap: space.sm,
+              backgroundColor: t.primary ? c.accent : c.card, borderWidth: 1, borderColor: t.primary ? c.accent : c.border,
+              opacity: pressed ? 0.8 : 1,
+            })}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <View style={{ width: 40, height: 40, borderRadius: radius.tile, backgroundColor: t.primary ? 'rgba(23,23,23,0.12)' : c.accentBg, alignItems: 'center', justifyContent: 'center' }}>
+                <MaterialIcons name={t.icon} size={22} color={t.primary ? c.onAccent : c.accentText} />
+                {t.badge ? (
+                  <View style={{ position: 'absolute', top: -6, right: -6, minWidth: 18, height: 18, borderRadius: radius.badge, backgroundColor: c.danger, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 }}>
+                    <Text style={{ color: white, fontSize: 11, fontWeight: '700' }}>{t.badge}</Text>
+                  </View>
+                ) : null}
+              </View>
+              <MaterialIcons name="arrow-forward" size={18} color={t.primary ? c.onAccent : c.muted} />
+            </View>
+            <View>
+              <Text style={{ color: fg, fontSize: 16, fontWeight: '700' }} numberOfLines={1}>{t.label}</Text>
+              <Text style={{ color: subColor, fontSize: 13, fontWeight: t.alert ? '600' : '400' }} numberOfLines={1}>{t.sub}</Text>
+            </View>
+          </Pressable>
+        );
+      })}
     </View>
   );
 }

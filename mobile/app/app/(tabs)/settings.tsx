@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Platform, Pressable, Text, TextInput, View } from 'react-native';
+import { Alert, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import * as Notifications from 'expo-notifications';
@@ -9,7 +9,7 @@ import { fetchProfile, updateProfile, testAlert, fetchHealth, sendAppFeedback } 
 import { getPushToken, setPushToken as storePushToken } from '../../src/lib/storage';
 import { BUILD_PROFILE } from '../../src/constants/config';
 import { hairline, radius, space, surface, useTheme } from '../../src/theme';
-import { BottomSheet, GroupedList, ScreenHeader, StickyBar, Toast } from '../../src/ui';
+import { BottomSheet, GroupedList, ScreenHeader, Toast } from '../../src/ui';
 
 const IN_EXPO_GO = Constants.appOwnership === 'expo';
 
@@ -103,20 +103,20 @@ export default function SettingsScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: surface }}>
       <ScreenHeader title="More" />
-      <StickyBar>
+      <ScrollView contentContainerStyle={{ paddingTop: space.md, paddingBottom: space.xl }} showsVerticalScrollIndicator={false}>
         <GroupedList sections={[
           {
             title: 'PROFILE',
             rows: [
-              { icon: 'account-circle', iconColor: c.accent, title: name, value: leaderBits || undefined, onPress: () => { } },
-              { icon: 'map-marker', iconColor: c.muted, title: 'Constituency', value: constituency ?? 'Not available', onPress: () => { } },
+              { icon: 'account-circle', iconColor: c.accent, title: name, value: leaderBits || undefined },
+              { icon: 'place', iconColor: c.muted, title: 'Constituency', value: constituency ?? 'Not available' },
             ],
           },
           {
             title: 'ACCOUNT',
             rows: [
-              { icon: 'contact-mail', iconColor: c.text, title: 'Contact details', value: `${profile?.email ?? 'Not set'} · ${profile?.phone ?? 'Not set'}`, onPress: () => { } },
-              { icon: 'translate', iconColor: c.text, title: 'Language', value: (profile?.lang === 'te' ? 'తెలుగు' : 'English'), onPress: () => { } },
+              { icon: 'contact-mail', iconColor: c.text, title: 'Contact details', value: `${profile?.email ?? 'Not set'} · ${profile?.phone ?? 'Not set'}` },
+              { icon: 'translate', iconColor: c.text, title: 'Language', value: (profile?.lang === 'te' ? 'తెలుగు' : 'English') },
             ],
           },
           {
@@ -135,8 +135,9 @@ export default function SettingsScreen() {
             ],
           },
           {
-            title: 'TEAM',
+            title: 'YOUR WORK',
             rows: [
+              ...(user?.role === 'admin' ? [] : [{ icon: 'bookmark', iconColor: c.text, title: 'Saved stories', onPress: () => router.push('/saved') }]),
               ...(user?.role === 'admin' ? [] : [{ icon: 'send', iconColor: c.text, title: 'Sent shares', onPress: () => router.push('/(tabs)/sent') }]),
               ...(user?.role !== 'admin' ? [{ icon: 'description', iconColor: c.text, title: 'Letters & petitions', onPress: () => router.push('/work') }] : []),
               ...(user?.role === 'mla' || user?.role === 'minister' ? [{ icon: 'groups', iconColor: c.text, title: 'My team', onPress: () => router.push('/my-team') }] : []),
@@ -144,21 +145,21 @@ export default function SettingsScreen() {
           },
           {
             title: 'HELP',
-            rows: [{ icon: 'help-circle', iconColor: c.text, title: 'Send feedback', onPress: () => setReportOpen(true) }],
+            rows: [{ icon: 'help-outline', iconColor: c.text, title: 'Send feedback', onPress: () => setReportOpen(true) }],
           },
           {
             title: 'ABOUT',
             rows: [
-              { icon: 'information-circle', iconColor: c.text, title: 'Version', value: Constants.expoConfig?.version ?? '1.0.0' },
+              { icon: 'info-outline', iconColor: c.text, title: 'Version', value: Constants.expoConfig?.version ?? '1.0.0' },
               { icon: 'build', iconColor: c.text, title: 'Build', value: BUILD_PROFILE },
               { icon: 'wifi', iconColor: health === 'connected' ? c.ok : c.danger, title: 'Server status', value: health === 'connected' ? 'Connected' : 'Not reachable' },
             ],
           },
         ]} />
-      </StickyBar>
-      <Pressable style={{ paddingHorizontal: space.lg, paddingVertical: space.sm, backgroundColor: surface }} onPress={onLogout} accessibilityRole="button" accessibilityLabel="Sign out">
-        <Text style={{ color: c.danger, fontWeight: '700', fontSize: 15, textAlign: 'center' }}>Sign out</Text>
-      </Pressable>
+        <Pressable style={{ minHeight: 48, justifyContent: 'center', marginTop: space.xl }} onPress={onLogout} accessibilityRole="button" accessibilityLabel="Sign out">
+          <Text style={{ color: c.danger, fontWeight: '700', fontSize: 15, textAlign: 'center' }}>Sign out</Text>
+        </Pressable>
+      </ScrollView>
       <BottomSheet visible={reportOpen} onClose={() => setReportOpen(false)} title="Send feedback">
         <TextInput value={feedbackMsg} onChangeText={setFeedbackMsg} placeholder="Your feedback (3–2000 chars)" multiline numberOfLines={4} style={{ fontSize: 14, color: c.text, borderWidth: 1, borderColor: hairline, borderRadius: radius.row, padding: space.sm, minHeight: 110 }} />
         <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: space.sm, paddingTop: space.sm }}>

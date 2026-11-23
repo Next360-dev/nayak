@@ -22,7 +22,7 @@ PW = "correct-horse-1"
 @pytest.fixture(scope="module")
 def client():
     c = get_connection(); cur = c.cursor()
-    cur.execute("DROP TABLE IF EXISTS team_task_notes, team_tasks, briefing_edits, story_feedback, app_feedback, notification_log, audit_log, refresh_tokens, device_tokens, share_replies, share_recipients, shares, "
+    cur.execute("DROP TABLE IF EXISTS team_task_notes, team_tasks, briefing_edits, story_feedback, app_feedback, notification_log, audit_log, refresh_tokens, device_tokens, saved_stories, share_replies, share_recipients, shares, "
                 "social_media_posts, tasks, political_representatives, new_articles, archive_news, users CASCADE")
     c.commit()
     cur.execute((MIG / "000_base_schema.sql").read_text())
@@ -31,7 +31,7 @@ def client():
     cur.execute((pathlib.Path(__file__).parents[1] / "migrations" / "007_team_board.sql").read_text())  # team board
     cur.execute((pathlib.Path(__file__).parents[1] / "migrations" / "008_leader_title.sql").read_text())  # leader title
     cur.execute((pathlib.Path(__file__).parents[1] / "migrations" / "009_must_change_password.sql").read_text())  # must change password
-    for f in ("001_auth_and_shares.sql", "003_mobile.sql", "004_share_pair_guard.sql"):
+    for f in ("001_auth_and_shares.sql", "003_mobile.sql", "004_share_pair_guard.sql", "011_saved_stories.sql"):
         cur.execute((MIG / f).read_text())
     cur.execute("""CREATE TABLE IF NOT EXISTS archive_news (id BIGINT PRIMARY KEY, title TEXT NOT NULL,
         district VARCHAR(100) DEFAULT 'Statewide', constituency VARCHAR(100) DEFAULT 'Statewide',
@@ -150,3 +150,57 @@ def test_news_numbers_are_shared_inside_a_scope_but_never_across_scopes(client, 
     m = dash(client, "min_x")                                       # minister: a different scope, computed separately
     assert len(calls) == 2 and m["news"]["today"] == 4
     assert dash(client, "mla_s")["news"]["today"] == 2 and len(calls) == 2   # repeated: served from the cache
+
+
+# ── weekly summary (real rows only) ──────────────────────────────────────────
+def test_week_counts_come_from_real_shares(client):
+    sh = hdr(client, "staff_s")
+    r = client.post("/api/shares", headers=sh, json={"title": "Week story", "url": "https://example.com/w", "recipients": ["mla_s"]})
+    assert r.status_code == 200, r.text
+    share_id = r.json()["share_id"]
+    before = dash(client, "mla_s")["shares"]["week"]
+    assert before["received"] >= 1
+    handled_before = before["handled"]
+    done = client.patch(f"/api/shares/{share_id}/status", headers=hdr(client, "mla_s"), json={"status": "done"})
+    assert done.status_code == 200, done.text
+    after = dash(client, "mla_s")["shares"]["week"]
+    assert after["handled"] == handled_before + 1
+    # the staff member sees the same share on the sent side
+    staff_week = dash(client, "staff_s")["shares"]["week"]
+    assert staff_week["sent"] >= 1 and staff_week["sent_done"] >= 1
+
+
+# ── saved stories ────────────────────────────────────────────────────────────
+STORY = {"article_id": 42, "title": "Saved road story", "url": "https://example.com/s", "place": "Sircilla", "tone": "positive"}
+
+
+def test_saved_requires_login(client):
+    assert client.get("/api/saved").status_code == 401
+    assert client.post("/api/saved", json=STORY).status_code == 401
+
+
+def test_save_list_and_remove(client):
+    h = hdr(client, "mla_s")
+    first = client.post("/api/saved", headers=h, json=STORY)
+    assert first.status_code == 200, first.text
+    saved_id = first.json()["story"]["id"]
+    again = client.post("/api/saved", headers=h, json=STORY)  # saving twice is fine and does not duplicate
+    assert again.json()["story"]["id"] == saved_id
+    listed = client.get("/api/saved", headers=h).json()["stories"]
+    assert [s["title"] for s in listed].count("Saved road story") == 1
+    assert client.delete(f"/api/saved/{saved_id}", headers=h).status_code == 200
+    assert client.delete(f"/api/saved/{saved_id}", headers=h).status_code == 404
+
+
+def test_saved_is_private(client):
+    mine = client.post("/api/saved", headers=hdr(client, "mla_s"), json={**STORY, "article_id": 43, "title": "Private one"})
+    saved_id = mine.json()["story"]["id"]
+    other = hdr(client, "min_x")
+    assert all(s["title"] != "Private one" for s in client.get("/api/saved", headers=other).json()["stories"])
+    assert client.delete(f"/api/saved/{saved_id}", headers=other).status_code == 404  # cannot remove someone else's
+
+
+def test_save_needs_an_id_or_link_and_a_valid_date(client):
+    h = hdr(client, "mla_s")
+    assert client.post("/api/saved", headers=h, json={"title": "No id, no link"}).status_code == 422
+    assert client.post("/api/saved", headers=h, json={**STORY, "published_at": "not a date"}).status_code == 422

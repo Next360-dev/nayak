@@ -1,18 +1,24 @@
-import React from 'react';
-import { RefreshControl, ScrollView, Text, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Platform, RefreshControl, ScrollView, Text, View } from 'react-native';
+import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchDashboard } from '../../src/api/dashboard';
 import { useAuth } from '../../src/hooks/useAuth';
 import { DashboardAttention, DashboardResponse, DashboardShares, LeaderOverview, UnreadCountResponse } from '../../src/types';
-import { space, tints, type, useTheme } from '../../src/theme';
-import { Badge, Card, EmptyState, ErrorState, HomeSkeleton, Pill, Row, SectionHeader, StatStrip } from '../../src/ui';
-import { Hero, NewsItem, QuickAction, QuickActions, ReachCard, SectionTitle, SummaryCard, TextLink } from '../../src/ui/HomeParts';
+import { space, type, useTheme } from '../../src/theme';
+import { Badge, Card, EmptyState, ErrorState, HomeSkeleton, Pill, Row, SectionHeader, ShareRow, StatStrip, Toast } from '../../src/ui';
+import { updateStatus } from '../../src/api/shares';
+import { Hero, NewsItem, ReachCard, SectionTitle, ShortcutGrid, ShortcutTile, StatusBrief, TextLink } from '../../src/ui/HomeParts';
+import { fetchSaved } from '../../src/api/saved';
 import { apiFetch } from '../../src/api/client';
 import { relativeTime } from '../../src/lib/time';
 import { rememberStory } from '../../src/lib/storyCache';
+import { getPushToken } from '../../src/lib/storage';
 
-const ADMIN_LEADERS_SHOWN = 8;
+const ADMIN_LEADERS_SHOWN = 5;
+// Push cannot work in Expo Go or in a browser, so do not offer it there.
+const PUSH_UNAVAILABLE = Constants.appOwnership === 'expo' || Platform.OS === 'web';
 
 function ShareShortcuts({ shares, onInbox, onSent }: { shares: DashboardShares; onInbox: () => void; onSent: () => void }) {
   const inbox = shares.inbox;
@@ -109,6 +115,21 @@ export default function HomeScreen() {
   const { c } = useTheme();
   const { user } = useAuth();
   const unread = useUnread();
+  const qc = useQueryClient();
+  const [toast, setToast] = useState<{ message: string; visible: boolean } | null>(null);
+  const [pushOn, setPushOn] = useState<boolean | null>(null);
+  useEffect(() => { void getPushToken().then((t) => setPushOn(!!t)).catch(() => setPushOn(null)); }, []);
+  const savedQ = useQuery({ queryKey: ['saved'], queryFn: fetchSaved, enabled: !!user && user.role !== 'admin' });
+  const answer = useMutation({
+    mutationFn: ({ id, to }: { id: number; to: string }) => updateStatus(id, to),
+    onSuccess: (_d, v) => {
+      setToast({ message: v.to === 'done' ? 'Marked as done' : v.to === 'acting' ? 'Marked as acting' : 'Marked as seen', visible: true });
+      void qc.invalidateQueries({ queryKey: ['dashboard'] });
+      void qc.invalidateQueries({ queryKey: ['inbox'] });
+      void qc.invalidateQueries({ queryKey: ['unread-count'] });
+    },
+    onError: () => setToast({ message: 'Could not update. Try again.', visible: true }),
+  });
   const { data, isLoading, isError, refetch, isRefetching } = useQuery({
     queryKey: ['dashboard'],
     queryFn: fetchDashboard,
@@ -135,17 +156,43 @@ export default function HomeScreen() {
   const news = data.news;
   const stories = news?.attention || [];
   const reach = data.shares?.inbox ?? data.shares;
+  const week = data.shares?.week;
+  const inboxRows = (data.shares?.inbox?.recent ?? []).filter((r) => r.status !== 'done').slice(0, 3);
 
-  const actions: QuickAction[] = isAdmin
-    ? []
-    : [
-        { icon: 'share', label: 'Share a story', color: tints.gold, onPress: () => router.push('/share/create') },
-        { icon: 'mail-outline', label: 'Inbox', color: tints.violet, onPress: openInbox, count: unread },
-        { icon: isStaff ? 'checklist' : 'groups', label: isStaff ? 'Team board' : 'Team', color: tints.blue, onPress: openTeam },
-        { icon: 'send', label: 'Sent', color: tints.green, onPress: openSent },
-      ];
+  // `ts` makes every tap a fresh request, so the target screen re-applies its filter even if the same one was used before.
+  const go = (pathname: string, params: Record<string, string>) => router.push({ pathname, params: { ...params, ts: String(Date.now()) } } as never);
+
+  const waitingForMe = data.shares?.inbox?.new ?? 0;
+  const waitingOnLeader = data.shares?.sent?.waiting ?? 0;
+  const urgentToday = news?.urgent ?? 0;
+  const negativeToday = news?.negative ?? 0;
+  const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+  const brief = isStaff
+    ? waitingForMe > 0
+      ? { allClear: false, headline: `${plural(waitingForMe, 'item', 'items')} from your leader`, sub: waitingOnLeader > 0 ? `${waitingOnLeader} of yours still waiting for an answer` : 'Open them and reply.' }
+      : waitingOnLeader > 0
+        ? { allClear: false, headline: `${waitingOnLeader} waiting on your leader`, sub: 'You have not heard back on these yet.' }
+        : { allClear: true, headline: 'Your queue is clear', sub: (news?.today ?? 0) > 0 ? `${plural(news?.today ?? 0, 'story', 'stories')} today. Find one worth sending.` : 'No new stories yet today.' }
+    : waitingForMe > 0
+      ? { allClear: false, headline: `${plural(waitingForMe, 'share is', 'shares are')} waiting for you`, sub: [urgentToday > 0 ? `${urgentToday} urgent today` : '', negativeToday > 0 ? `${negativeToday} negative` : ''].filter(Boolean).join(' · ') || undefined }
+      : urgentToday > 0
+        ? { allClear: false, headline: `${plural(urgentToday, 'urgent story', 'urgent stories')} today`, sub: negativeToday > 0 ? `${negativeToday} negative to look at` : undefined }
+        : { allClear: true, headline: 'You are all caught up', sub: negativeToday > 0 ? `${plural(negativeToday, 'negative story', 'negative stories')} worth a look today.` : 'Nothing needs you right now.' };
+
+  const savedCount = savedQ.data?.length;
+  const board = data.board;
+  const boardOpen = board ? board.todo + board.doing : 0;
+  const tiles: ShortcutTile[] = isAdmin ? [] : [
+    isStaff
+      ? { icon: 'article', label: 'Find stories', sub: (news?.today ?? 0) > 0 ? `${news?.today} today` : 'Browse the news', onPress: openNews, primary: true }
+      : { icon: 'share', label: 'Share a story', sub: 'Send one to your team', onPress: () => router.push('/share/create'), primary: true },
+    { icon: 'mail-outline', label: 'Inbox', sub: unread > 0 ? `${unread} new` : 'All clear', onPress: openInbox, badge: unread, alert: unread > 0 },
+    { icon: isStaff ? 'checklist' : 'groups', label: isStaff ? 'Team board' : 'Team', sub: !board ? 'Tasks and notes' : board.overdue > 0 ? `${board.overdue} overdue` : boardOpen > 0 ? `${boardOpen} open` : 'No open tasks', onPress: openTeam, alert: !!board && board.overdue > 0 },
+    { icon: 'bookmark-border', label: 'Saved', sub: savedCount === undefined ? 'Your reading list' : savedCount > 0 ? `${savedCount} saved` : 'Nothing saved yet', onPress: () => router.push('/saved') },
+  ];
 
   return (
+    <View style={{ flex: 1 }}>
     <ScrollView
       style={{ flex: 1 }}
       contentContainerStyle={{ paddingBottom: space.xl }}
@@ -154,7 +201,7 @@ export default function HomeScreen() {
     >
       <Hero eyebrow={eyebrow} place={place} name={person} unread={unread} onBell={openInbox} onAvatar={openMore} />
 
-      {actions.length > 0 ? <QuickActions actions={actions} /> : <View style={{ height: space.lg }} />}
+      <View style={{ height: space.lg }} />
 
       {isAdmin ? (
         <View style={{ paddingHorizontal: space.lg }}>
@@ -176,7 +223,7 @@ export default function HomeScreen() {
           <SectionHeader title="Accounts" />
           <StatStrip
             items={[
-              { label: 'MLAs + MPs', value: (data.users?.by_role?.mla ?? 0) + (data.users?.by_role?.minister ?? 0) },
+              { label: 'Leaders', value: (data.users?.by_role?.mla ?? 0) + (data.users?.by_role?.minister ?? 0) },
               { label: 'staff', value: data.users?.by_role?.staff ?? 0 },
               { label: 'never signed in', value: data.users?.never_logged_in ?? 0, tone: (data.users?.never_logged_in ?? 0) > 0 ? 'attention' : undefined },
             ]}
@@ -196,11 +243,11 @@ export default function HomeScreen() {
             <>
               <SectionHeader title="Recent share activity" />
               <Card>
-                {data.activity.map((a, i) => (
+                {data.activity.slice(0, 5).map((a, i, arr) => (
                   <Row
                     key={a.id}
                     title={a.title}
-                    last={i === (data.activity?.length ?? 0) - 1}
+                    last={i === arr.length - 1}
                     meta={`${a.sender ? `from ${a.sender} · ` : ''}${relativeTime(a.created_at)}`}
                     onPress={() => router.push(`/share/${a.id}`)}
                   />
@@ -211,23 +258,62 @@ export default function HomeScreen() {
         </View>
       ) : (
         <>
-          <SectionTitle
-            title="Today's Summary"
-            right={<Text style={{ color: c.muted, fontSize: 14 }}>{todayLabel()}</Text>}
+          <StatusBrief
+            allClear={brief.allClear}
+            headline={brief.headline}
+            sub={brief.sub}
+            date={todayLabel()}
+            tiles={isStaff ? [
+              { icon: 'description', value: news?.today ?? 0, label: 'Stories today', tone: 'neutral', onPress: openNews },
+              { icon: 'hourglass-empty', value: data.shares?.sent?.waiting ?? 0, label: 'Waiting on leader', tone: 'attention', onPress: () => go('/(tabs)/inbox', { sent: '1' }) },
+              { icon: 'mail-outline', value: data.shares?.inbox?.new ?? 0, label: 'From leader', tone: 'danger', onPress: () => go('/(tabs)/inbox', { filter: 'new' }) },
+            ] : [
+              { icon: 'mail-outline', value: data.shares?.inbox?.new ?? 0, label: 'Waiting for me', tone: 'danger', onPress: () => go('/(tabs)/inbox', { filter: 'new' }) },
+              { icon: 'local-fire-department', value: news?.urgent ?? 0, label: 'Urgent today', tone: 'danger', onPress: openNews },
+              { icon: 'warning-amber', value: news?.negative ?? 0, label: 'Negative today', tone: 'attention', onPress: () => go('/(tabs)/news', { scope: 'negative' }) },
+            ]}
           />
-          {news && !news.error ? (
-            <View style={{ flexDirection: 'row', gap: space.md, marginHorizontal: space.lg }}>
-              <SummaryCard icon="description" value={news.today ?? 0} label="Stories" tone="ok" />
-              <SummaryCard icon="local-fire-department" value={news.urgent ?? 0} label="Urgent" tone="danger" />
-              <SummaryCard icon="warning-amber" value={news.negative ?? 0} label="Negative" tone="attention" />
-            </View>
-          ) : (
-            <View style={{ marginHorizontal: space.lg }}>
-              <Card><EmptyState icon="cloud-off" title={news?.error || 'News is not available right now'} /></Card>
-            </View>
-          )}
+          {news?.error ? <View style={{ marginHorizontal: space.lg, marginTop: space.md }}><Card><EmptyState icon="cloud-off" title={news.error} /></Card></View> : null}
 
-          <SectionTitle title="Today's News" right={stories.length > 0 ? <TextLink label="View All" onPress={openNews} /> : undefined} />
+          <SectionTitle title={isStaff ? 'From your leader' : 'Picked for you'} right={inboxRows.length > 0 ? <TextLink label="Inbox" onPress={openInbox} /> : undefined} />
+          <View style={{ marginHorizontal: space.lg }}>
+            <Card>
+              {inboxRows.length > 0 ? inboxRows.map((r, i) => (
+                <ShareRow
+                  key={r.id}
+                  share={r}
+                  showNote
+                  last={i === inboxRows.length - 1}
+                  busy={answer.isPending}
+                  onOpen={() => router.push(`/share/${r.id}`)}
+                  onStatus={(to) => answer.mutate({ id: r.id, to })}
+                />
+              )) : (
+                <EmptyState icon="mail-outline" title={isStaff ? 'Nothing from your leader yet' : 'No shares waiting'} hint={isStaff ? 'Find a story and send it to your leader.' : 'Stories your team shares will appear here.'} />
+              )}
+            </Card>
+          </View>
+
+          {tiles.length > 0 ? <ShortcutGrid tiles={tiles} /> : null}
+
+          {week && (week.received + week.handled + week.sent + week.sent_done) > 0 ? (
+            <View style={{ marginHorizontal: space.lg }}>
+              <SectionHeader title="This week" />
+              <StatStrip items={isStaff
+                ? [{ label: 'sent up', value: week.sent }, { label: 'answered done', value: week.sent_done }, { label: 'from leader', value: week.received }]
+                : [{ label: 'received', value: week.received }, { label: 'handled', value: week.handled }]} />
+            </View>
+          ) : null}
+
+          {pushOn === false && !PUSH_UNAVAILABLE ? (
+            <View style={{ marginHorizontal: space.lg, marginTop: space.lg }}>
+              <Card>
+                <Row title="Get a ping when something needs you" meta={isStaff ? 'Only for replies and new items from your leader.' : 'Only for new shares from your team.'} onPress={openMore} last />
+              </Card>
+            </View>
+          ) : null}
+
+          <SectionTitle title={isStaff ? 'Stories to review' : 'Needs attention today'} right={stories.length > 0 ? <TextLink label="View All" onPress={openNews} /> : undefined} />
           <View style={{ marginHorizontal: space.lg }}>
             {stories.length > 0 ? (
               <Card>
@@ -253,10 +339,10 @@ export default function HomeScreen() {
               <SectionTitle title="Shares & Reach" />
               <ReachCard
                 metrics={[
-                  { icon: 'mail-outline', label: 'New', value: reach.new ?? 0, color: tints.blue },
-                  { icon: 'visibility', label: 'Seen', value: reach.seen ?? 0, color: tints.violet },
-                  { icon: 'touch-app', label: 'Acting', value: reach.acting ?? 0, color: tints.gold },
-                  { icon: 'check-circle-outline', label: 'Done', value: reach.done ?? 0, color: tints.green },
+                  { icon: 'mail-outline', label: 'New', value: reach.new ?? 0, color: c.accent },
+                  { icon: 'visibility', label: 'Seen', value: reach.seen ?? 0, color: c.muted },
+                  { icon: 'touch-app', label: 'Acting', value: reach.acting ?? 0, color: c.attention },
+                  { icon: 'check-circle-outline', label: 'Done', value: reach.done ?? 0, color: c.ok },
                 ]}
               />
             </>
@@ -284,5 +370,7 @@ export default function HomeScreen() {
         </>
       )}
     </ScrollView>
+      {toast ? <Toast message={toast.message} visible={toast.visible} onDismiss={() => setToast(null)} /> : null}
+    </View>
   );
 }

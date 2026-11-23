@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MaterialIcons } from '@expo/vector-icons';
-import { ActivityIndicator, FlatList, RefreshControl, Pressable, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, FlatList, Linking, RefreshControl, Pressable, Text, TextInput, View } from 'react-native';
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useRouter } from 'expo-router';
-import { fetchNews, fetchSocialMedia, translate, fetchRefreshStatus, startRefresh, reportStory } from '../../src/api/news';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { fetchNews, fetchSocialMedia, scrapeSocial, translate, fetchRefreshStatus, startRefresh, reportStory } from '../../src/api/news';
 import { Article } from '../../src/types';
 import { PAGE_SIZE } from '../../src/constants/config';
 import { useAuth } from '../../src/hooks/useAuth';
@@ -11,6 +11,8 @@ import { hairline, space, surface, tints, useTheme } from '../../src/theme';
 import { Card, EmptyState, ScreenHeader, StickyBar } from '../../src/ui';
 import { NewsCard, NewsSkeleton, PresetChips, ScopeItem, ScopeTabs, Segmented, Tone } from '../../src/ui/NewsParts';
 import { BottomSheet } from '../../src/ui/BottomSheet';
+import { rememberStory } from '../../src/lib/storyCache';
+import { useLastVisit } from '../../src/lib/lastVisit';
 
 const MIX_SOCIAL_SCOPES = ['all', 'positive', 'negative'];
 const DEBOUNCE_MS = 400;
@@ -21,8 +23,16 @@ export default function NewsScreen() {
   const { user } = useAuth();
   const canShare = !!user && user.role !== 'admin';
   const { c } = useTheme();
+  const since = useLastVisit();
 
   const [scope, setScope] = useState('all');
+  const { scope: scopeParam, ts: scopeTs } = useLocalSearchParams<{ scope?: string; ts?: string }>();
+  const [appliedScope, setAppliedScope] = useState<string | undefined>();
+  const scopeKey = scopeParam ? `${scopeParam}|${scopeTs ?? ''}` : undefined;
+  if (scopeKey && scopeKey !== appliedScope) {
+    setAppliedScope(scopeKey);
+    if (['all', 'positive', 'negative', 'statewide', 'civic', 'social'].includes(scopeParam as string)) setScope(scopeParam as string);
+  }
   const [period, setPeriod] = useState('today');
   const [dateRange, setDateRange] = useState('all');
   const [translations, setTranslations] = useState<Record<number, { h: string; s: string }>>({});
@@ -153,7 +163,10 @@ export default function NewsScreen() {
     queryKey: ['social', activeConstituency, activeMlaName, period],
     queryFn: () => fetchSocialMedia({ constituency: activeConstituency, mla_name: activeMlaName || 'All', period }),
     enabled: scope === 'social' && !!activeConstituency,
+    // The server refreshes old social data in the background by itself; look again until it says it is done.
+    refetchInterval: (q) => (q.state.data?.refreshing ? 4000 : false),
   });
+  const socialUpdating = scope === 'social' && !!socialFeed?.refreshing;
 
   const socialPosts = (scope === 'social') ? (socialFeed?.posts || []) : [];
 
@@ -206,7 +219,28 @@ export default function NewsScreen() {
 
   const refreshWaitLeft = refreshWaitUntil > now ? Math.ceil((refreshWaitUntil - now) / 1000) : 0;
 
+  // On the Social tab, Refresh searches the web for new posts about the MLA (the news refresh does not cover social).
+  const refreshSocial = async () => {
+    if (refreshInFlightRef.current || refreshingNews) return;
+    if (!activeConstituency) { setRefreshMsg('Social posts need a constituency'); return; }
+    refreshInFlightRef.current = true;
+    setRefreshingNews(true);
+    setRefreshMsg('Searching social media');
+    try {
+      const r = await scrapeSocial(activeConstituency, activeMlaName);
+      if (!aliveRef.current) return;
+      setRefreshMsg(r.scraped_count > 0 ? `${r.scraped_count} posts found` : 'No new posts found');
+      await refetchSocial();
+    } catch {
+      if (aliveRef.current) setRefreshMsg('Could not search social media. Try again later.');
+    } finally {
+      refreshInFlightRef.current = false;
+      if (aliveRef.current) setRefreshingNews(false);
+    }
+  };
+
   const clickRefresh = async () => {
+    if (scope === 'social') { await refreshSocial(); return; }
     if (refreshInFlightRef.current || refreshingNews || refreshWaitLeft > 0) return;
     refreshInFlightRef.current = true;
     setRefreshMsg('');
@@ -275,6 +309,23 @@ export default function NewsScreen() {
     } catch {}
   };
 
+  const storyTime = (a: Article) => {
+    const v = a.date_time || a.published_at;
+    const n = v ? new Date(v).getTime() : NaN;
+    return Number.isFinite(n) ? n : 0;
+  };
+  const isNewStory = (a: Article) => since !== null && period === 'today' && storyTime(a) > since;
+
+  const openStory = (a: Article) => {
+    const links = (a.sources || []).map((x: any) => ({ publisher: x?.publisher || x?.newspaper_name || x?.name, url: x?.url })).filter((x) => x.url);
+    const id = rememberStory({
+      id: String(a.id), headline: a.headline, summary: a.summary, url: a.url, place: a.constituency_name || a.district_name,
+      source: a.newspaper_name || a.source, time: a.date_time || a.published_at, tone: toneOf(a), urgent: a.priority_score === 1,
+      imageUrl: a.image_url, sources: links.length ? links : undefined,
+    });
+    router.push(`/story/${id}`);
+  };
+
   const renderArticle = (item: Article) => {
     const t = translations[item.id];
     return (
@@ -288,6 +339,8 @@ export default function NewsScreen() {
         source={item.newspaper_name || item.source}
         time={item.date_time || item.published_at}
         imageUrl={item.image_url}
+        isNew={isNewStory(item)}
+        onPress={() => openStory(item)}
         translated={!!t}
         onTranslate={() => { void toggleTranslate(item); }}
         onShare={item.url && canShare ? () => router.push({ pathname: '/share/create', params: { title: item.headline, url: item.url || '' } }) : undefined}
@@ -301,8 +354,11 @@ export default function NewsScreen() {
       key={`s-${post.id}`}
       headline={post.content || post.text || post.title || ''}
       tone={post.sentiment === 'negative' ? 'negative' : post.sentiment === 'positive' ? 'positive' : 'neutral'}
-      place={post.platform}
+      labelNeutral
+      place={post.platform_name || post.platform}
+      source={post.author_name}
       time={post.published_at}
+      onPress={post.url ? () => { void Linking.openURL(post.url).catch(() => {}); } : undefined}
       onLongPress={() => handleLongPress({ title: post.content || post.text || post.title || '', article_id: undefined })}
     />
   );
@@ -322,7 +378,8 @@ export default function NewsScreen() {
   const place = activeConstituency || user?.constituency_name || 'Telangana';
   const updated = refreshStatus?.latest_story_at ? relativeTime(refreshStatus.latest_story_at) : '';
   const refreshLabel = refreshingNews ? 'Refreshing' : refreshWaitLeft > 0 ? `${refreshWaitLeft}s` : 'Refresh';
-  const note = refreshMsg || (updated ? `Updated ${updated}` : '');
+  const newCount = since !== null && period === 'today' ? filteredArticles.filter(isNewStory).length : 0;
+  const note = refreshMsg || (socialUpdating ? 'Updating social posts' : scope === 'social' && socialFeed?.showing_older ? 'No posts in 24h · showing older' : newCount > 0 ? `${newCount} new since you were last here` : updated ? `Updated ${updated}` : '');
 
   const headerActions: { icon: React.ComponentProps<typeof MaterialIcons>['name']; label: string; onPress: () => void }[] = [
     { icon: searching ? 'close' : 'search', label: searching ? 'Cancel search' : 'Search', onPress: () => { setSearching(!searching); if (!searching) setSearchQuery(''); } },
@@ -358,6 +415,8 @@ export default function NewsScreen() {
         renderItem={({ item }) => {
           if (item.kind === 'social') return renderSocialPost(item.data);
           if (item.kind === 'article') return renderArticle(item.data);
+          // On the Social tab the rows are raw posts (they carry `content`, not `headline`).
+          if (scope === 'social') return renderSocialPost(item);
           return renderArticle(item);
         }}
         ListHeaderComponent={
@@ -377,7 +436,7 @@ export default function NewsScreen() {
         refreshControl={<RefreshControl refreshing={isRefetching || (scope === 'social' && socialLoading)} tintColor={c.accent} onRefresh={() => { qc.invalidateQueries({ queryKey: ['news'] }); void refetch(); if (scope === 'social') void refetchSocial(); }} />}
         onEndReached={() => { if (scope !== 'social' && hasNextPage && !isFetchingNextPage) fetchNextPage(); }}
         onEndReachedThreshold={0.5}
-        ListFooterComponent={isFetchingNextPage ? <ActivityIndicator color={c.muted} style={{ margin: space.lg }} /> : undefined}
+        ListFooterComponent={isFetchingNextPage ? <ActivityIndicator color={c.muted} style={{ margin: space.lg }} /> : (!hasNextPage && scope !== 'social' && listData.length > 0 ? <Text style={{ color: c.muted, fontSize: 13, textAlign: 'center', padding: space.xl }}>You are all caught up.</Text> : undefined)}
         ListEmptyComponent={
           loadingFirst ? <NewsSkeleton /> : failed ? (
             <Card style={{ marginHorizontal: space.lg }}>
@@ -388,7 +447,11 @@ export default function NewsScreen() {
             </Card>
           ) : (
             <Card style={{ marginHorizontal: space.lg }}>
-              <EmptyState icon="search" title={searching ? 'No stories match' : 'No stories in this view'} hint={searching ? 'Try another keyword.' : 'Pull down to refresh, or try Archive.'} />
+              <EmptyState
+                icon={scope === 'social' ? 'forum' : 'search'}
+                title={searching ? 'No stories match' : scope === 'social' ? (socialUpdating ? 'Searching social media' : 'No social posts yet') : 'No stories in this view'}
+                hint={searching ? 'Try another keyword.' : scope === 'social' ? (socialUpdating ? 'Looking on YouTube, Facebook, Instagram and X. New posts appear here by themselves.' : 'Nothing found for your MLA yet. Tap Refresh to search again.') : 'Pull down to refresh, or try Archive.'}
+              />
             </Card>
           )
         }
