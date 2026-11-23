@@ -134,7 +134,7 @@ export async function fetchUrgentAlerts({ period, activeConst }) {
       const cRes = await apiFetch(`${apiTarget}/api/news?period=${period || 'today'}&constituency=${encodeURIComponent(activeConst)}&limit=30`);
       const cData = await cRes.json();
       if (cRes.ok && cData.status === 'success' && Array.isArray(cData.articles)) {
-        const sorted = [...cData.articles].sort((a, b) => {
+        const sorted = cData.articles.filter((article) => Number(article.priority_score) === 1).sort((a, b) => {
           const pA = Number(a.priority_score) || 3;
           const pB = Number(b.priority_score) || 3;
           if (pA !== pB) return pA - pB;
@@ -149,7 +149,7 @@ export async function fetchUrgentAlerts({ period, activeConst }) {
     }
   }
 
-  if (selectedAlerts.length === 0) {
+  if (selectedAlerts.length === 0 && !activeConst) {
     try {
       const res = await apiFetch(`${apiTarget}/api/news?period=${period || 'today'}&priority=1&limit=50`);
       const data = await res.json();
@@ -173,6 +173,19 @@ export async function fetchRepresentatives(district) {
   const apiTarget = getApiBase();
   const res = await apiFetch(`${apiTarget}/api/representatives?${params.toString()}`);
   return await res.json();
+}
+
+export async function fetchPortfolio() {
+  const res = await apiFetch(`${getApiBase()}/api/portfolio`);
+  return jsonOrThrow(res);
+}
+
+export async function savePortfolio(content) {
+  return jsonOrThrow(await apiFetch(`${getApiBase()}/api/portfolio`, jsonPost('PUT', content)));
+}
+
+export async function fetchPublicPortfolio(leaderUsername) {
+  return jsonOrThrow(await fetch(`${getApiBase()}/api/public/portfolio/${encodeURIComponent(leaderUsername)}`));
 }
 
 export async function translateArticle(headline, summary) {
@@ -314,3 +327,28 @@ export const addTaskNote = async (id, body) => jsonOrThrow(await apiFetch(`${get
 export const fetchTeamBriefing = async (lang) => jsonOrThrow(await apiFetch(`${getApiBase()}/api/team/briefing?lang=${lang}`));
 export const saveTeamBriefing = async (lang, body) => jsonOrThrow(await apiFetch(`${getApiBase()}/api/team/briefing`, jsonPost('PUT', { lang, body })));
 export const resetTeamBriefing = async (lang) => jsonOrThrow(await apiFetch(`${getApiBase()}/api/team/briefing?lang=${lang}`, { method: 'DELETE' }));
+
+// ── milestone-1 tasks ────────────────────────────────────────────────────────
+export const fetchWatchlist = async () => jsonOrThrow(await apiFetch('/api/watchlist'));
+export const setWatchlist = async (names) => jsonOrThrow(await apiFetch('/api/watchlist', jsonPost('POST', { names })));
+export const checkWatchlistNow = async () => jsonOrThrow(await apiFetch('/api/watchlist/check-now', jsonPost('POST', {})));
+export const deleteWatchlist = async (id) => jsonOrThrow(await apiFetch(`/api/watchlist/${id}`, { method: 'DELETE' }));
+
+export const fetchTopAlerts = async () => jsonOrThrow(await apiFetch('/api/alerts/top5'));
+
+export const fetchComposedPosts = async () => jsonOrThrow(await apiFetch('/api/composed-posts'));
+export const createComposedPost = async (p) => jsonOrThrow(await apiFetch('/api/composed-posts', jsonPost('POST', p)));
+export const decideComposedPost = async (id, status) => jsonOrThrow(await apiFetch(`/api/composed-posts/${id}/status`, jsonPost('PATCH', { status })));
+
+export const fetchProjects = async () => jsonOrThrow(await apiFetch('/api/projects'));
+export const createProject = async (p) => jsonOrThrow(await apiFetch('/api/projects', jsonPost('POST', p)));
+export const updateProject = async (id, p) => jsonOrThrow(await apiFetch(`/api/projects/${id}`, jsonPost('PATCH', p)));
+
+export const submitSurvey = async (p) => jsonOrThrow(await apiFetch('/api/public-survey', jsonPost('POST', p)));
+export const fetchSurveyResults = async () => jsonOrThrow(await apiFetch('/api/public-survey/results'));
+
+export const fetchSuggestions = async () => jsonOrThrow(await apiFetch('/api/leader/suggestions'));
+export const approveSuggestion = async (id, assignedTo) => jsonOrThrow(await apiFetch(`/api/leader/suggestions/${id}/approve`, jsonPost('PATCH', { assigned_to: assignedTo })));
+
+export const uploadWhatsApp = async (p) => jsonOrThrow(await apiFetch('/api/whatsapp/upload', jsonPost('POST', p)));
+export const fetchWhatsApp = async () => jsonOrThrow(await apiFetch('/api/whatsapp/uploads'));

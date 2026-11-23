@@ -10,6 +10,9 @@ import { triggerScraper } from '../../utils/api';
 import { useLang, useTimeAgo, useTimeUntil } from '../../i18n/LangContext';
 import { Empty, Page, Section, Stats, StatusBadge } from './shared';
 import { AuditLine } from '../AuditDialog';
+import WhatsAppUploads from '../WhatsAppUploads';
+import ProjectTracker from '../ProjectTracker';
+import WatchlistActivity from './WatchlistActivity';
 
 const LEVEL = {
   bad: { icon: CircleAlert, cls: 'text-red-700 bg-red-50' },
@@ -30,7 +33,7 @@ function Row({ icon: Icon, label, children }) {
   );
 }
 
-export default function AdminHome({ data, onRefresh, onOpenUsers, onOpenInbox, onOpenAudit, onOpenBriefing }) {
+export default function AdminHome({ data, currentUser, onRefresh, onOpenUsers, onOpenInbox, onOpenAudit, onOpenBriefing, onOpenCompose, onOpenProjects }) {
   const { tr } = useLang();
   const ago = useTimeAgo();
   const until = useTimeUntil();
@@ -176,6 +179,8 @@ export default function AdminHome({ data, onRefresh, onOpenUsers, onOpenInbox, o
         )}
       </Section>
 
+      <WatchlistActivity />
+
       <div className="grid items-start gap-6 lg:grid-cols-2">
         <Section title={tr('quality.title')} description={tr('quality.desc')}>
           {!quality || quality.total === 0 ? <Empty>{tr('quality.none')}</Empty> : (
@@ -210,6 +215,9 @@ export default function AdminHome({ data, onRefresh, onOpenUsers, onOpenInbox, o
           )}
         </Section>
       </div>
+
+      <WhatsAppUploads user={currentUser} />
+      <ProjectTracker currentUser={currentUser} />
 
       <Section title={tr('audit.title')} description={tr('audit.desc')}
                action={<Button variant="ghost" size="sm" onClick={onOpenAudit}>{tr('audit.viewAll')}</Button>}>

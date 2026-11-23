@@ -4,6 +4,8 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { useLang } from '../../i18n/LangContext';
+import { ArrowLeft } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 const STATUS = {
   new: 'border-amber-300 bg-amber-50 text-amber-900',
@@ -27,13 +29,14 @@ const TONE = { default: 'text-foreground', warn: 'text-attention', bad: 'text-de
  */
 export function Stats({ items, big = false }) {
   const cols = { 2: 'sm:grid-cols-2', 3: 'sm:grid-cols-3', 4: 'lg:grid-cols-4' }[items.length] || 'lg:grid-cols-4';
+  const oddSpan = items.length === 4 ? '[&>*:last-child:nth-child(odd)]:sm:col-span-2 [&>*:last-child:nth-child(odd)]:lg:col-span-1' : '';
   return (
-    <dl className={cn('grid grid-cols-2 gap-px overflow-hidden rounded-lg border bg-border [&>*:last-child:nth-child(odd)]:col-span-2 sm:[&>*:last-child:nth-child(odd)]:col-span-1', cols)}>
+    <dl className={cn('grid grid-cols-1 gap-3 sm:grid-cols-2', cols, oddSpan)}>
       {items.map((it) => (
-        <div key={it.label} className={cn('bg-card px-5 py-4', big && 'py-5')}>
-          <dt className="text-[13px] font-medium text-muted-foreground">{it.label}</dt>
+        <div key={it.label} className={cn('relative overflow-hidden rounded-xl border border-slate-200 bg-white px-5 py-4 shadow-[0_2px_8px_rgba(15,23,42,.04)] before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-orange-500', big && 'py-5')}>
+          <dt className="text-[11px] font-bold uppercase tracking-[0.1em] text-slate-500">{it.label}</dt>
           <dd className={cn('mt-1 font-semibold tracking-tight tabular-nums', big ? 'text-4xl' : 'text-3xl', TONE[it.tone || 'default'])}>{it.value ?? '–'}</dd>
-          {it.hint && <dd className="mt-0.5 text-xs text-muted-foreground">{it.hint}</dd>}
+          {it.hint && <dd className="mt-1 text-xs text-slate-500">{it.hint}</dd>}
         </div>
       ))}
     </dl>
@@ -43,7 +46,7 @@ export function Stats({ items, big = false }) {
 /** A titled card; children go in the body. */
 export function Section({ title, description, action, className, children }) {
   return (
-    <Card className={cn('gap-3 py-5', className)}>
+    <Card className={cn('gap-3 rounded-xl border-slate-200 bg-white py-5 shadow-[0_2px_10px_rgba(15,23,42,.035)]', className)}>
       <CardHeader className="pb-0">
         <CardTitle className="text-[15px] font-semibold">{title}</CardTitle>
         {description && <CardDescription className="text-[13px]">{description}</CardDescription>}
@@ -61,7 +64,7 @@ export function Empty({ children }) {
 /** Page frame shared by every home screen. `narrow` is for the leader: a calmer, shorter line length. */
 export function Page({ title, subtitle, actions, narrow = false, children }) {
   return (
-    <main className="shadcn-scope min-h-[calc(100vh-120px)] bg-background">
+    <main className="shadcn-scope min-h-[calc(100vh-120px)] bg-[#f5f6f8]">
       <div className={cn('mx-auto w-full space-y-6 px-4 py-6 md:px-8 md:py-8 lg:px-10', narrow ? 'max-w-4xl' : 'max-w-[1800px]')}>
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
@@ -69,6 +72,25 @@ export function Page({ title, subtitle, actions, narrow = false, children }) {
             {subtitle && <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>}
           </div>
           {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+        </div>
+        {children}
+      </div>
+    </main>
+  );
+}
+
+/** Consistent frame for full-screen work areas such as Compose and Projects. */
+export function FeaturePage({ title, subtitle, onBack, children }) {
+  const { tr } = useLang();
+  return (
+    <main className="shadcn-scope min-h-[calc(100vh-120px)] bg-[#f5f6f8]">
+      <div className="mx-auto w-full max-w-5xl space-y-6 px-4 py-6 md:px-8 md:py-8">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+            {subtitle && <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>}
+          </div>
+          {onBack && <Button type="button" variant="outline" onClick={onBack}><ArrowLeft aria-hidden="true" />{tr('nav.home')}</Button>}
         </div>
         {children}
       </div>

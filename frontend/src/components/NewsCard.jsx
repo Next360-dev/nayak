@@ -64,8 +64,8 @@ export default function NewsCard({ art, currentLang, t, onOpenOutletsModal, onSh
   const summary = rawSummary && same(rawSummary, headline) && rawSummary.length < headline.length + 60 ? '' : rawSummary;
 
   return (
-    <article className="space-y-2.5 px-5 py-5" id={`article-card-${art.id}`}>
-      <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+    <article className="flex h-full flex-col gap-3 rounded-xl border border-slate-200 border-l-[3px] border-l-emerald-500 bg-white p-4 shadow-[0_2px_8px_rgba(15,23,42,.045)] transition-shadow hover:shadow-md" id={`article-card-${art.id}`}>
+      <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
         {pScore === 1 && <Badge variant="destructive">{te ? 'అత్యవసరం' : 'Urgent'}</Badge>}
         {pScore === 2 && <Badge variant="secondary">{te ? 'ప్రజా సమస్య' : 'Civic'}</Badge>}
         {isSocial && <Badge variant="outline">{te ? 'సోషల్ మీడియా' : 'Social media'}</Badge>}
@@ -75,11 +75,11 @@ export default function NewsCard({ art, currentLang, t, onOpenOutletsModal, onSh
         <span>· {formattedDate}</span>
       </p>
 
-      <h2 id={`article-title-${art.id}`} className="text-[17px] font-semibold leading-snug tracking-tight">{headline}</h2>
+      <h2 id={`article-title-${art.id}`} className="line-clamp-3 text-[17px] font-semibold leading-snug tracking-tight text-slate-900">{headline}</h2>
 
-      {summary && <p id={`article-summary-${art.id}`} className="line-clamp-3 text-sm leading-relaxed text-muted-foreground">{summary}</p>}
+      {summary && <p id={`article-summary-${art.id}`} className="line-clamp-3 text-sm leading-relaxed text-slate-600">{summary}</p>}
 
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-1">
+      <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-slate-100 pt-3">
         <a href={primarySource.url} target="_blank" rel="noopener noreferrer"
            className="text-sm font-medium text-brand underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-ring"
            title={`${te ? 'మూలం తెరవండి' : 'Open source'}: ${primarySource.publisher}`}>

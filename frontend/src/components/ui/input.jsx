@@ -4,10 +4,14 @@ import { cn } from "@/lib/utils"
 function Input({
   className,
   type,
+  label,
+  id,
   ...props
 }) {
-  return (
-    <input
+  const generatedId = React.useId();
+  const inputId = id || generatedId;
+  const input = <input
+      id={inputId}
       type={type}
       data-slot="input"
       className={cn(
@@ -17,8 +21,12 @@ function Input({
         className
       )}
       {...props}
-    />
-  )
+    />;
+  if (!label) return input;
+  return <div className="grid gap-1.5">
+    <label htmlFor={inputId} className="text-sm font-medium text-foreground">{label}</label>
+    {input}
+  </div>;
 }
 
 export { Input }

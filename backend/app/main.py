@@ -18,7 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.api.deps import require_admin
-from app.api.routes import auth, devices, news, politicians, translation, social_media, shares, team, dashboard, audit, account, feedback, contacts, board, work_items, saved
+from app.api.routes import auth, devices, features, news, politicians, translation, social_media, shares, team, dashboard, audit, account, feedback, contacts, board, work_items, saved, portfolio
 from app.core.config import settings
 
 # The interactive API docs list every endpoint, so they are OFF unless explicitly switched on
@@ -36,7 +36,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
     allow_credentials=False,  # auth uses a Bearer header, not cookies
-    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
 )
 
@@ -105,6 +105,8 @@ app.include_router(board.router)
 app.include_router(work_items.router)
 app.include_router(devices.router)
 app.include_router(saved.router)
+app.include_router(features.router)
+app.include_router(portfolio.router)
 
 # ── Background Automation (Immediate on Boot, then Every 3 Hours) ────────────
 @app.on_event("startup")
@@ -120,6 +122,15 @@ def start_alert_scheduler():
         return
     from app.services import alerts_service
     alerts_service.start_scheduler()
+
+
+@app.on_event("startup")
+def start_task_schedulers():
+    if os.getenv("DEMO_FREEZE") == "1":
+        return
+    from app.services import top_alerts_service, watchlist_service
+    top_alerts_service.start_scheduler()
+    watchlist_service.start_scheduler()
 
 
 @app.get("/api/automation/status")

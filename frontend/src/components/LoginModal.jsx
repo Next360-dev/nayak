@@ -140,7 +140,10 @@ export default function LoginModal({ isOpen, onLoginSuccess, notice, onToggleLan
               </Button>
             </form>
 
-            <p className="mt-6 text-center text-sm text-muted-foreground">{tr('login.forgot')}</p>
+            <div className="mt-6 space-y-3 text-center">
+              <p className="text-sm text-muted-foreground">{tr('login.forgot')}</p>
+              <a href="/survey" className="inline-flex min-h-10 items-center rounded-md px-3 text-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{tr('login.publicSurvey')}</a>
+            </div>
           </div>
 
           <p className="text-center text-xs text-muted-foreground lg:hidden">{tr('login.footer')}</p>

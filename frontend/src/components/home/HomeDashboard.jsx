@@ -8,7 +8,7 @@ import { HomeSkeleton, Page } from './shared';
 import { useLang } from '../../i18n/LangContext';
 
 /** Loads the caller's own dashboard and shows the right home screen for their role. */
-export default function HomeDashboard({ refreshKey, onShare, onTask, onOpenBoard, onOpenInbox, onOpenUsers, onOpenTeam, onOpenNews, onOpenAudit, onOpenBriefing }) {
+export default function HomeDashboard({ refreshKey, currentUser, onShare, onTask, onOpenBoard, onOpenInbox, onOpenUsers, onOpenTeam, onOpenCompose, onOpenProjects, onOpenNews, onOpenAudit, onOpenBriefing, onOpenDemo }) {
   const { tr } = useLang();
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
@@ -35,7 +35,7 @@ export default function HomeDashboard({ refreshKey, onShare, onTask, onOpenBoard
   }
   if (!data) return <HomeSkeleton />;
 
-  if (data.kind === 'admin') return <AdminHome data={data} onRefresh={load} onOpenUsers={onOpenUsers} onOpenInbox={onOpenInbox} onOpenAudit={onOpenAudit} onOpenBriefing={onOpenBriefing} />;
-  if (data.kind === 'staff') return <StaffHome data={data} onRefreshed={load} onShare={onShare} onTask={onTask} onOpenBoard={onOpenBoard} onOpenInbox={onOpenInbox} onOpenNews={onOpenNews} onOpenBriefing={onOpenBriefing} />;
-  return <LeaderHome data={data} onRefreshed={load} onChanged={load} onShare={onShare} onOpenBoard={onOpenBoard} onOpenInbox={onOpenInbox} onOpenTeam={onOpenTeam} onOpenNews={onOpenNews} onOpenBriefing={onOpenBriefing} />;
+  if (data.kind === 'admin') return <AdminHome data={data} currentUser={currentUser} onRefresh={load} onOpenUsers={onOpenUsers} onOpenInbox={onOpenInbox} onOpenAudit={onOpenAudit} onOpenBriefing={onOpenBriefing} onOpenCompose={onOpenCompose} onOpenProjects={onOpenProjects} />;
+  if (data.kind === 'staff') return <StaffHome data={data} currentUser={currentUser} onRefreshed={load} onShare={onShare} onTask={onTask} onOpenBoard={onOpenBoard} onOpenInbox={onOpenInbox} onOpenNews={onOpenNews} onOpenBriefing={onOpenBriefing} onOpenCompose={onOpenCompose} onOpenProjects={onOpenProjects} onOpenDemo={onOpenDemo} />;
+  return <LeaderHome data={data} currentUser={currentUser} onRefreshed={load} onChanged={load} onShare={onShare} onOpenBoard={onOpenBoard} onOpenInbox={onOpenInbox} onOpenTeam={onOpenTeam} onOpenNews={onOpenNews} onOpenBriefing={onOpenBriefing} onOpenCompose={onOpenCompose} onOpenProjects={onOpenProjects} onOpenDemo={onOpenDemo} />;
 }

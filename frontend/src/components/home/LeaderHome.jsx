@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Clock, FileText, ListChecks, Users } from 'lucide-react';
+import { Clock, FileText, ListChecks, Presentation, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -8,6 +8,9 @@ import { updateShareStatus } from '../../utils/api';
 import { Empty, Page, Section, Stats } from './shared';
 import StoryRow from './StoryRow';
 import RefreshNews from '../RefreshNews';
+import TopAlerts from './TopAlerts';
+import LeaderSuggestions from '../LeaderSuggestions';
+import WatchlistActivity from './WatchlistActivity';
 
 const STEPS = ['seen', 'acting', 'done'];
 
@@ -48,23 +51,39 @@ function Pick({ item, onChanged }) {
   );
 }
 
-/** The leader's home: a calm, big, look-only screen. The team does the work; this shows the result. */
-export default function LeaderHome({ data, onRefreshed, onChanged, onShare, onOpenBoard, onOpenInbox, onOpenTeam, onOpenNews, onOpenBriefing }) {
+/** The leader's home: review office work, set priorities, and track progress. */
+export default function LeaderHome({ data, currentUser, onRefreshed, onChanged, onShare, onOpenBoard, onOpenInbox, onOpenTeam, onOpenCompose, onOpenProjects, onOpenNews, onOpenBriefing, onOpenDemo }) {
   const { tr } = useLang();
   const ago = useTimeAgo();
   const isMinister = data.kind === 'minister';
   const { news, shares, team, board } = data;
   const staffCount = team.filter((t) => t.is_active).length;
+  const decisionCount = shares.inbox.new + (data.approvals?.pending || 0);
+  const openTaskCount = (board?.todo || 0) + (board?.doing || 0);
 
   return (
-    <Page title={isMinister ? tr('leader.title.minister') : data.title === 'MP' ? data.scope.label : tr('leader.title.mla', { place: data.scope.label })}
+      <Page title={isMinister ? tr('leader.title.minister') : data.title === 'MP' ? data.scope.label : tr('leader.title.mla', { place: data.scope.label })}
           subtitle={isMinister ? tr('leader.sub.minister') : tr('leader.sub.mla')}
-          actions={<><RefreshNews onDone={onRefreshed} /><Button variant="outline" size="sm" onClick={onOpenBriefing}><FileText /> {tr('brief.btn')}</Button><Button variant="outline" size="sm" onClick={onOpenNews}>{tr('btn.openFeed')}</Button></>}>
+          actions={<RefreshNews onDone={onRefreshed} />}>
       <Stats big items={[
-        { label: tr('leader.kpi.waiting'), value: shares.inbox.new, hint: tr('leader.kpi.waitingHint'), tone: shares.inbox.new ? 'warn' : 'default' },
-        { label: tr('leader.kpi.urgent'), value: news.error ? '–' : news.urgent, hint: news.error ? news.error : tr('leader.kpi.ofN', { n: news.today }), tone: news.urgent ? 'bad' : 'default' },
-        { label: tr('leader.kpi.negative'), value: news.error ? '–' : news.negative, hint: tr('leader.kpi.negativeHint'), tone: news.negative ? 'warn' : 'default' },
+        { label: tr('leader.kpi.decisions'), value: decisionCount, hint: tr('leader.kpi.decisionsHint', { shares: shares.inbox.new, posts: data.approvals?.pending || 0 }), tone: decisionCount ? 'warn' : 'default' },
+        { label: tr('leader.kpi.urgent'), value: news.error ? '–' : news.urgent, hint: news.error || tr(news.urgent ? 'leader.kpi.urgentHint' : 'leader.kpi.urgentClear'), tone: news.urgent ? 'bad' : 'default' },
+        { label: tr('leader.kpi.negative'), value: news.error ? '–' : news.negative, hint: news.error || tr(news.negative ? 'leader.kpi.negativeHint' : 'leader.kpi.negativeClear'), tone: news.negative ? 'warn' : 'default' },
+        { label: tr('leader.kpi.teamWork'), value: openTaskCount, hint: tr('leader.kpi.teamWorkHint', { todo: board?.todo || 0, doing: board?.doing || 0 }), tone: board?.overdue ? 'warn' : 'default' },
       ]} />
+
+      <Section title={tr('leader.actions.title')} description={tr('leader.actions.desc')}>
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+          <Button variant="outline" size="sm" className="justify-start" onClick={onOpenCompose}><FileText /> {tr('compose.reviewTitle')}</Button>
+          <Button variant="outline" size="sm" className="justify-start" onClick={onOpenProjects}>{tr('proj.title')}</Button>
+          <Button variant="outline" size="sm" className="justify-start border-orange-200 bg-orange-50/60 text-orange-900 hover:bg-orange-100" onClick={onOpenDemo}><Presentation /> {tr('workspace.openLeader')}</Button>
+          <Button variant="outline" size="sm" className="justify-start" onClick={onOpenBriefing}><FileText /> {tr('brief.btn')}</Button>
+          <Button variant="ghost" size="sm" className="justify-start" onClick={onOpenNews}>{tr('btn.openFeed')}</Button>
+        </div>
+      </Section>
+
+      <LeaderSuggestions user={currentUser} />
+      <WatchlistActivity />
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_24rem]">
         <div className="space-y-6">
@@ -111,6 +130,8 @@ export default function LeaderHome({ data, onRefreshed, onChanged, onShare, onOp
           )}
         </div>
 
+        <div className="space-y-6">
+        <TopAlerts user={currentUser} />
         <Section title={tr('btn.myTeam')}>
           <div className="space-y-4 text-sm">
             <p className="flex items-start gap-2 text-muted-foreground">
@@ -126,6 +147,7 @@ export default function LeaderHome({ data, onRefreshed, onChanged, onShare, onOp
             </div>
           </div>
         </Section>
+        </div>
       </div>
     </Page>
   );

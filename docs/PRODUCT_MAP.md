@@ -1,6 +1,6 @@
 # Nayak: Product Map (read this instead of re-reading the code)
 
-Last verified against the code: 2026-11-18 (Phase 2 mobile parity M7-M13.2 done; M13.1 device test and M13.4 EAS build still pending). If you change a feature, update this file in the same change.
+Role and dashboard behavior reviewed: 2026-11-24 (Milestone 1 office role split). Mobile parity status last verified 2026-11-18 (M7-M13.2 done; M13.1 device test and M13.4 EAS build still pending). If you change a feature, update this file in the same change.
 
 ## 1. The idea in one paragraph
 Governance news for Telangana, collected automatically and shown to leaders. News is scraped from public sources every
@@ -11,23 +11,29 @@ Governance news for Telangana, collected automatically and shown to leaders. New
   (read-only), and supports people (reset passwords, disable/enable logins, run the scraper).
 
 ## 2. The three levels (what "3 dashboards" means here)
-There is ONE web app, but every login opens its OWN HOME screen (built with shadcn/ui). Tabs under the header: **Home | News feed**. Home data comes from `GET /api/dashboard` (role-aware, computed server-side in the login's own scope by `services/dashboard_service.py`).
+There is ONE web app, but every login opens its OWN HOME screen (built with shadcn/ui). The header navigation now exposes **Home | Today’s Live News | Social Media | History | Official Portfolio**. Home data comes from `GET /api/dashboard` (role-aware, computed server-side in the login's own scope by `services/dashboard_service.py`).
 
-| Level | Roles | Heading | News they see | Extra buttons |
+| Level | Roles | Home focus | News they see | Main work |
 |---|---|---|---|---|
-| 1. Master admin | `admin` | MASTER CONTROL | whole state, all filters | **Overview** (control room), **Users**, **All shares** (read-only). No Share buttons |
-| 2. MLA | `mla` + their `staff` | MLA OFFICE · <constituency> / TEAM · <constituency> | ONLY their own constituency (forced by the server) | **My team** (MLA only), Shared, Share buttons |
-| 3. Minister | `minister` + their `staff` | MINISTER OFFICE / TEAM | whole state | **My team** (minister only), Shared, Share buttons |
+| 1. Master admin | `admin` | System control room | whole state, all filters | Manage accounts and system health; inspect records and all shares |
+| 2. Leader | `mla`, `minister` | Decisions and oversight | MLA's constituency or minister's statewide scope | Act on shares, approve posts, oversee team and projects |
+| 3. Staff operations | `staff` | Daily office work | Their linked leader's scope | Review and route stories, manage intake/watchlist/projects, prepare posts and team work |
 
-Staff = a leader's helper. Staff have the leader's news scope, their OWN inbox (items the leader sends down), can share up to their leader, cannot create users, and have no team button.
-Not built (decision pending): different page layouts per level, per-leader tasks board, audit log.
+Staff = the office operations lead: they work the daily queue, monitor issues, take in WhatsApp and public feedback, maintain projects and watchlists, prepare posts, and route decisions to their leader. Staff have the leader's news scope and their own inbox; they do not administer accounts across offices. The separate master admin owns system-wide account and health controls.
+The role-specific home screens and team task board are built. Public survey responses are readable by staff and leaders; system-wide control remains in the master admin view.
+
+### Leader and staff presentation workspace (2026-11-24)
+- Leader and staff homes expose a dedicated presentation workspace. Staff enter the operations walkthrough; leaders enter the oversight and approvals walkthrough.
+- The walkthrough covers simulated IVR intake, public feedback, constituency projects, WhatsApp group message routing, and post composition/approval.
+- Every record is illustrative and every interaction is held in page state only. The walkthrough does not call telephony/WhatsApp providers, invoke the real intake or post APIs, or write office records.
+- Staff can preview intake classification, record a sample feedback follow-up, advance project progress, prepare an update, and route a draft to the local approval preview. The leader view can inspect outcomes and simulate approve/request-changes decisions.
 
 ### The four home screens (first thing after login)
 - **Master admin = "Control Room"**: 4 KPI cards (leaders, staff accounts, shares + % resolved, news last 24 h); "Needs your attention" list (database down, news stale, leaders with shares unopened > 24 h, accounts that never logged in, disabled accounts) with action buttons; "System health" card (database, news, scraper, **Run news update now**); Leaders table (last login, shares New/Seen/Acting/Done, team size); Recent share activity (read-only).
-- **MLA / Minister = "My Constituency · <name>" (redesigned 2026-11-15, look-only)**: product idea changed: the STAFF (the leader's IT team) are the engine, the leader only looks. Home = 3 big numbers (Waiting for me / Urgent today / Negative today), then **"Picked for you"**: each staff share as a big card with the staff note and ONE-TAP answers (Seen / I'll act / Done, no typing; `data-pick-answer`), then "Needs attention today" (top 5, Send-to-team), minister only: district table, and one slim "N active staff · Manage" line at the bottom. "Picked for you" = the leader's inbox (no new backend; `shares.inbox.recent` now also carries `note` and `url`).
+- **MLA / Minister = decision and oversight home**: 3 big numbers (Waiting for me / Urgent today / Negative today), then the team inbox with one-tap status actions and "Needs attention today" stories; leaders can approve staff post drafts, review project progress, see suggestions/alerts, and oversee their team. Minister only: district table.
 - **Minister = "State Overview"**: same KPIs plus a **Districts needing attention** table (urgent, negative, total per district) and statewide stories to act on.
-- **Staff = "Work Queue"**: KPIs Stories today / Waiting on MLA|minister / Being acted on / Done; "Stories to review" with a prominent **Send to MLA|minister** button; "What I sent" (status per share); "From <leader>" (inbox preview).
-The old news page is the **News feed** tab (unchanged: sidebar filters, urgent banner, cards, representatives, social).
+- **Staff = "Staff operations"**: KPIs Stories today / Waiting on MLA|minister / Being acted on / Done; stories to review and route to the leader; sent and received shares; public feedback inbox; watchlist and WhatsApp intake tools; create/update actions for posts, projects, briefing, and the team board.
+The news area remains one role-scoped feed with sidebar filters, urgent alerts, card results, and pagination. Its primary tabs jump directly to today, social, and history scopes. **Official Portfolio** is a dedicated office portfolio workspace: staff can publish verified profile, biography, ministry milestone, office contact, and constituency project updates; leaders get a read-only view; master admin retains the representative directory. Unknown contact details remain blank until supplied.
 
 ## 3. Features every logged-in user has (the News feed tab)
 - **Urgent banner**: live ticker of high-priority (P1) alerts for the constituency (or statewide).
@@ -84,6 +90,8 @@ Auth = signed Bearer token only (header `X-User-*` is ignored). Role is re-read 
 - Account: `POST /api/me/password` (change my own password; ends all other sessions), `GET|PUT /api/me/profile` (email, phone, alerts on/off, language), `POST /api/me/test-alert`, `GET /api/briefing?lang=` (+ `POST /api/briefing/email-me`)
 - Feedback: `POST /api/feedback/story` (not relevant / wrong priority / wrong tone), `POST /api/feedback/app` (free text for the pilot)
 - Admin: `GET /api/audit?limit&q&action` (who did what), `POST /api/representatives/import?dry_run=` (CSV of real contacts + CM / ministers)
+- Watchlist (migration `012_tasks.sql`): staff manage names with `GET|POST /api/watchlist`; `POST /api/watchlist/check-now` performs an immediate scan; the background scan runs every 30 minutes when schedulers are enabled. Staff see their office's saved matches, leaders see their own office read-only, and admin sees matches across offices read-only.
+- Portfolio: `GET /api/portfolio` (staff + their leader only), `PUT /api/portfolio` (staff only; published office content). Migration `014_official_portfolios.sql` stores team-scoped JSONB content and editor/timestamp metadata. `services/recommendation_service.py` uses the configured Gemini model to suggest grounded next steps from real priority stories, with a deterministic fallback when Gemini is unavailable; watchlist suggestions remain rule-based. Migration `015_suggestion_assignment.sql` stores which active team member received an assigned follow-up.
 - (The old unscoped Tasks API was REMOVED 2026-11-14; nothing used it.)
 
 ## 7. Data and pipeline
@@ -159,3 +167,15 @@ Idea: the STAFF are the leader's IT team and do the daily work; leaders only loo
 
 ## Real logins (2026-11-15)
 Demo accounts were removed. Real team created with `./local.sh team --constituency Vemulawada --leader aadi_srinivas --staff aadi_staff1 aadi_staff2`: MLA Aadi Srinivas (INC, Vemulawada, Rajanna Sircilla) + 2 staff linked to him only. Passwords: random, in the private file `~/.config/ai-smart-office/team-logins.txt` (mode 600; never in the repo or chat). Master admin login: `admin` (`admin-login.txt`). `create_team.py` never touches an existing username; add more teams the same way, or add staff from the leader's Team screen.
+
+## Milestone 1 office role split (2026-11-24)
+
+The staff role is the **office operations desk**. Staff monitor constituency stories and the watchlist, route WhatsApp messages, draft and schedule posts, update project records, work on team tasks, review public feedback, export saved posts to PDF, and send items to their leader. Staff-created posts wait for leader approval.
+
+The MLA/minister role is the **leader decision page**. Leaders review and approve/reject staff post drafts, act on staff shares and urgent stories, review suggestions and their office's watchlist matches, and oversee projects and team progress. Leaders do not manage the watchlist, submit WhatsApp uploads, create post drafts, or edit project records in the web UI.
+
+The master admin remains the **system control room** and can inspect project, WhatsApp, and cross-office watchlist activity. Write permissions for watchlists, post creation/decision, project updates, and WhatsApp intake are enforced by the API, not only hidden in the interface. Public feedback is submitted without login at `/survey` (also linked from sign-in); staff review the response inbox on their operations home.
+
+## Staff home and post media update (2026-11-24)
+- Staff Home now puts its daily create/update actions at the top, followed by work status, story review, feedback, team messages, and office tools. The urgent strip only includes priority-1 items within the selected constituency.
+- Compose and schedule accepts one JPEG, PNG, or WebP attachment up to 2 MB. The image is stored with the post and appears in the staff list and leader approval queue. Migration `013_composed_post_image.sql` adds the optional media column.

@@ -373,10 +373,10 @@ export default function NewsFeed({
           )}
 
           {isLoading && (
-            <div className="divide-y rounded-lg border bg-card" aria-busy="true">
+            <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3" aria-busy="true">
               <p className="sr-only" role="status">{te ? 'వార్తలు లోడ్ అవుతున్నాయి' : 'Loading stories'}</p>
-              {[0, 1, 2, 3].map((i) => (
-                <div key={i} className="space-y-2.5 px-5 py-5"><Skeleton className="h-3 w-48" /><Skeleton className="h-5 w-4/5" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-2/3" /></div>
+              {[0, 1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="space-y-3 rounded-xl border border-slate-200 bg-white p-4"><Skeleton className="h-3 w-48" /><Skeleton className="h-5 w-4/5" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-2/3" /></div>
               ))}
             </div>
           )}
@@ -396,17 +396,15 @@ export default function NewsFeed({
           )}
 
           {!isLoading && !error && shouldMixSocial && mixedItems.length > 0 && (
-            <div className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
               {mixedItems.map((item) => item.kind === 'social'
                 ? <SocialPostCard key={item.key} post={item.data} te={te} />
-                : <div key={item.key} className="divide-y overflow-hidden rounded-lg border bg-card">
-                    <NewsCard art={item.data} currentLang={currentLang} t={t} onOpenOutletsModal={onOpenOutletsModal} onShare={onShare} />
-                  </div>)}
+                : <NewsCard key={item.key} art={item.data} currentLang={currentLang} t={t} onOpenOutletsModal={onOpenOutletsModal} onShare={onShare} />)}
             </div>
           )}
 
           {!isLoading && !error && !shouldMixSocial && displayedArticles.length > 0 && (
-            <div className="divide-y overflow-hidden rounded-lg border bg-card">
+            <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
               {displayedArticles.map((art) => (
                 <NewsCard key={art.id} art={art} currentLang={currentLang} t={t} onOpenOutletsModal={onOpenOutletsModal} onShare={onShare} />
               ))}

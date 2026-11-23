@@ -3,13 +3,21 @@ import Header from './components/Header';
 import UrgentAlertBanner from './components/UrgentAlertBanner';
 import SidebarFilters from './components/SidebarFilters';
 import NewsFeed from './components/NewsFeed';
-import RepresentativesDirectory from './components/RepresentativesDirectory';
+import OfficialPortfolioPage from './components/OfficialPortfolioPage';
+import PublicPortfolioPage from './components/PublicPortfolioPage';
 import LoginModal from './components/LoginModal';
 import OutletsModal from './components/OutletsModal';
 import ShareModal from './components/ShareModal';
 import ShareInbox from './components/ShareInbox';
 import AdminUsersModal from './components/AdminUsersModal';
 import HomeDashboard from './components/home/HomeDashboard';
+import LeaderDemo from './components/home/LeaderDemo';
+import TopAlerts from './components/home/TopAlerts';
+import Watchlist from './components/home/Watchlist';
+import LeaderSuggestions from './components/LeaderSuggestions';
+import WhatsAppUploads from './components/WhatsAppUploads';
+import ComposeScreen from './components/ComposeScreen';
+import ProjectTracker from './components/ProjectTracker';
 import AccountDialog from './components/AccountDialog';
 import BriefingDialog from './components/BriefingDialog';
 import FeedbackDialog from './components/FeedbackDialog';
@@ -18,8 +26,10 @@ import AuditDialog from './components/AuditDialog';
 import { LangProvider } from './i18n/LangContext';
 import { STRINGS } from './i18n/strings';
 import NavTabs from './components/home/NavTabs';
+import LeaderIdentityBar from './components/home/LeaderIdentityBar';
 import TeamModal from './components/TeamModal';
 import TeamBoard from './components/TeamBoard';
+import SurveyPage from './components/SurveyPage';
 import { TRANSLATIONS } from './utils/constants';
 import {
   fetchHierarchy,
@@ -35,6 +45,7 @@ import {
 } from './utils/api';
 
 export default function App() {
+  const publicPortfolioMatch = window.location.pathname.match(/^\/public\/portfolio\/([^/]+)\/?$/);
   // Session & Authentication
   const [currentUser, setCurrentUser] = useState(() => {
     try {
@@ -367,7 +378,6 @@ export default function App() {
     if (currentUser) {
       loadNews();
       loadAlerts();
-      loadReps();
     }
   }, [
     currentUser,
@@ -530,8 +540,42 @@ export default function App() {
     ? currentUser.constituency_name
     : (selectedConstituency && selectedConstituency !== 'All' ? selectedConstituency : null);
 
+  const handlePrimaryNav = (destination) => {
+    if (destination === 'home') {
+      setView('home');
+      return;
+    }
+    if (destination === 'portfolio') {
+      setView('portfolio');
+      loadReps();
+      return;
+    }
+    if (destination === 'live') {
+      setView('news');
+      setPeriod('today');
+      setNewsScope('all');
+      setCurrentPage(1);
+      loadNews(false, { period: 'today', newsScope: 'all', page: 1, force: true });
+      return;
+    }
+    if (destination === 'history') {
+      setView('news');
+      setPeriod('history');
+      setNewsScope('all');
+      setCurrentPage(1);
+      loadNews(false, { period: 'history', newsScope: 'all', page: 1, force: true });
+      return;
+    }
+    if (destination === 'social') {
+      setView('news');
+      setPeriod('today');
+      setNewsScope('social');
+    }
+  };
+
   return (
     <LangProvider lang={currentLang}>
+    {publicPortfolioMatch ? <PublicPortfolioPage username={decodeURIComponent(publicPortfolioMatch[1])} /> : window.location.pathname.replace(/\/+$/, '') === '/survey' ? <SurveyPage onToggleLang={toggleLang} /> :
     <>
       {/* Fullscreen Login Modal */}
       <LoginModal
@@ -560,9 +604,22 @@ export default function App() {
               onOpenFeedback={() => setIsFeedbackOpen(true)}
             />
 
-            <NavTabs view={view} onChange={setView} />
+            {['home', 'news', 'portfolio'].includes(view) && <LeaderIdentityBar currentUser={currentUser} />}
+
+            <NavTabs view={view === 'news' ? (newsScope === 'social' ? 'social' : period === 'history' ? 'history' : 'live') : (view === 'demo' ? 'home' : view)} onChange={handlePrimaryNav} />
 
           </div>
+
+          {(view === 'home' || view === 'news') && urgentAlerts.length > 0 && (
+            <div className="shadcn-scope mx-auto w-full max-w-[1800px] px-4 pt-3 md:px-8 lg:px-10">
+              <UrgentAlertBanner alerts={urgentAlerts} activeConst={activeConstituencyForBanner} currentLang={currentLang}
+                onArticleClick={(id) => {
+                  setView('news'); setPeriod('today'); setNewsScope('all'); setCurrentPage(1);
+                  loadNews(false, { period: 'today', newsScope: 'all', page: 1, force: true });
+                  window.setTimeout(() => handleScrollToArticle(id), 350);
+                }} />
+            </div>
+          )}
 
           {metaError && (
             <div className="load-error-bar" role="alert">
@@ -581,10 +638,21 @@ export default function App() {
               onOpenInbox={() => setIsInboxOpen(true)}
               onOpenUsers={() => setIsUsersOpen(true)}
               onOpenTeam={() => setIsTeamOpen(true)}
+              onOpenCompose={() => setView('compose')}
+              onOpenProjects={() => setView('projects')}
               onOpenNews={() => setView('news')}
               onOpenAudit={() => setIsAuditOpen(true)}
               onOpenBriefing={() => setIsBriefingOpen(true)}
+              onOpenDemo={() => setView('demo')}
             />
+          )}
+
+          {view === 'demo' && <LeaderDemo currentUser={currentUser} role={currentUser?.role === 'staff' ? 'staff' : 'leader'} onBack={() => setView('home')} />}
+          {view === 'compose' && <ComposeScreen user={currentUser} onBack={() => setView('home')} />}
+          {view === 'projects' && <ProjectTracker user={currentUser} onBack={() => setView('home')} />}
+
+          {view === 'portfolio' && (
+            <OfficialPortfolioPage currentUser={currentUser} reps={reps} isLoadingReps={isLoadingReps} repsError={repsError} onRetryReps={loadReps} currentLang={currentLang} t={t} />
           )}
 
           {view === 'news' && (
@@ -629,17 +697,8 @@ export default function App() {
               t={t}
             />
 
-            <main className="shadcn-scope mx-auto grid w-full max-w-[1800px] items-start gap-6 px-4 py-6 md:px-8 md:py-8 lg:px-10 xl:grid-cols-[minmax(0,1fr)_24rem] xl:grid-rows-[auto_1fr]">
+            <main className="shadcn-scope mx-auto w-full max-w-[1800px] px-4 py-6 md:px-8 md:py-8 lg:px-10">
               <h1 className="sr-only">{currentLang === 'te' ? 'వార్తల ఫీడ్' : 'News feed'}</h1>
-              <div className="min-w-0 empty:hidden xl:col-start-2 xl:row-start-1">
-                <UrgentAlertBanner
-                  alerts={urgentAlerts}
-                  activeConst={activeConstituencyForBanner}
-                  currentLang={currentLang}
-                  onArticleClick={handleScrollToArticle}
-                />
-              </div>
-              <div className="min-w-0 xl:col-start-1 xl:row-span-2 xl:row-start-1">
               <NewsFeed
                 articles={articles}
                 isLoading={isLoadingNews}
@@ -696,19 +755,6 @@ export default function App() {
                 onRefreshed={() => { feedCacheRef.current.clear(); loadNews(false, { page: 1, force: true }); setHomeTick((n) => n + 1); }}
                 activeFilterCount={(currentUser?.scoped ? 0 : [selectedDistrict, selectedPolitician, selectedConstituency].filter((v) => v && v !== 'All').length) + (selectedPriority !== '0' ? 1 : 0)}
               />
-
-              </div>
-
-              <div className="min-w-0 xl:col-start-2 xl:row-start-2">
-              <RepresentativesDirectory
-                reps={reps}
-                isLoading={isLoadingReps}
-                error={repsError}
-                onRetry={loadReps}
-                currentLang={currentLang}
-                t={t}
-              />
-              </div>
             </main>
           </div>
           )}
@@ -757,6 +803,7 @@ export default function App() {
         </>
       )}
     </>
+    }
     </LangProvider>
   );
 }
