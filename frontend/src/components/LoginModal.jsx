@@ -49,35 +49,50 @@ export default function LoginModal({ isOpen, onLoginSuccess, notice, onToggleLan
   ];
 
   return (
-    <main id="login-overlay" className="shadcn-scope fixed inset-0 z-[2000] overflow-y-auto bg-background">
-      <div className="grid min-h-full lg:grid-cols-[1fr_1fr]">
-        {/* Brand panel (large screens): solid ink, type only */}
-        <aside className="bg-primary p-14 text-primary-foreground max-lg:hidden lg:flex lg:flex-col lg:justify-between">
-          <div className="flex items-center gap-3">
-            <Logo className="size-10 rounded-[10px] ring-1 ring-white/25" />
-            <span className="text-lg font-semibold tracking-tight">{tr('login.brand')}</span>
+    <main id="login-overlay" className="shadcn-scope fixed inset-0 z-[2000] overflow-y-auto bg-[#f7f8f6]">
+      <div aria-hidden="true" className="fixed inset-x-0 top-0 z-10 h-1.5 bg-[linear-gradient(90deg,#ff9933_0%,#ff9933_33.333%,#fff_33.333%,#fff_66.666%,#138808_66.666%,#138808_100%)] shadow-sm" />
+      <div className="grid min-h-full lg:grid-cols-[1.05fr_.95fr]">
+        {/* Brand panel */}
+        <aside className="relative isolate overflow-hidden bg-[#101a32] p-8 pt-12 text-white sm:p-12 sm:pt-14 lg:flex lg:flex-col lg:justify-between lg:p-14 lg:pt-16">
+          <div aria-hidden="true" className="pointer-events-none absolute -right-28 -top-28 size-[26rem] rounded-full border border-white/10 after:absolute after:inset-8 after:rounded-full after:border after:border-[#ff9933]/25 before:absolute before:inset-16 before:rounded-full before:border before:border-[#138808]/30" />
+          <div aria-hidden="true" className="absolute bottom-0 left-0 h-1 w-full bg-[linear-gradient(90deg,#ff9933_0%,#ff9933_33.333%,#fff_33.333%,#fff_66.666%,#138808_66.666%,#138808_100%)]" />
+          <div className="relative flex items-center gap-3">
+            <span className="relative grid size-12 place-items-center rounded-2xl bg-white shadow-[0_8px_24px_rgba(255,153,51,.22)] ring-1 ring-white/60">
+              <Logo className="size-9 rounded-xl" />
+            </span>
+            <span>
+              <span className="block text-lg font-semibold tracking-tight">{tr('login.brand')}</span>
+              <span className="mt-0.5 block text-[11px] font-medium uppercase tracking-[.18em] text-white/60">Telangana · India</span>
+            </span>
           </div>
 
-          <div className="max-w-md space-y-10">
-            <div className="space-y-4">
-              <h1 className="text-4xl font-semibold leading-[1.15] tracking-tight">{tr('login.tagline')}</h1>
-              <p className="text-base leading-relaxed text-white/75">{tr('login.lead')}</p>
+          <div className="relative mt-10 max-w-lg space-y-8 lg:mt-0">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[.06] px-3 py-1.5 text-xs font-medium text-white/80">
+              <span aria-hidden="true" className="size-2 rounded-full bg-[#138808] ring-2 ring-[#138808]/20" />
+              Public service, made clearer
             </div>
-            <ul className="list-none divide-y divide-white/15 border-y border-white/15 text-sm text-white/90">
+            <div className="space-y-4">
+              <h1 className="max-w-md text-4xl font-semibold leading-[1.12] tracking-tight sm:text-5xl">{tr('login.tagline')}</h1>
+              <p className="max-w-md text-base leading-relaxed text-white/70">{tr('login.lead')}</p>
+            </div>
+            <ul className="list-none divide-y divide-white/10 border-y border-white/10 text-sm text-white/85">
               {features.map(({ text }) => (
-                <li key={text} className="py-3.5 leading-snug">{text}</li>
+                <li key={text} className="flex items-start gap-3 py-4 leading-snug">
+                  <span aria-hidden="true" className="mt-1.5 size-2 shrink-0 rounded-full bg-[#ff9933] shadow-[0_0_0_3px_rgba(255,153,51,.14)]" />
+                  {text}
+                </li>
               ))}
             </ul>
           </div>
 
-          <p className="text-xs text-white/60">{tr('login.footer')}</p>
+          <p className="relative mt-8 text-xs text-white/55 lg:mt-0">{tr('login.footer')}</p>
         </aside>
 
         {/* Form side */}
-        <section className="flex flex-col px-6 py-6 sm:px-12 lg:py-8">
+        <section className="flex min-h-[70vh] flex-col bg-[radial-gradient(ellipse_at_top_right,rgba(255,153,51,.09),transparent_36%),radial-gradient(ellipse_at_bottom_left,rgba(19,136,8,.07),transparent_32%),#fbfcfa] px-6 py-6 pt-10 sm:px-12 lg:min-h-screen lg:py-8 lg:pt-10">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5 lg:invisible">
-              <Logo className="size-9 rounded-[9px]" />
+              <Logo className="size-9 rounded-[9px] ring-1 ring-orange-200" />
               <span className="text-sm font-semibold tracking-wide">{tr('login.brand')}</span>
             </div>
             {onToggleLang && (
@@ -88,6 +103,11 @@ export default function LoginModal({ isOpen, onLoginSuccess, notice, onToggleLan
           </div>
 
           <div className="mx-auto my-auto w-full max-w-sm py-10">
+            <div aria-hidden="true" className="mb-7 flex items-center gap-2">
+              <span className="h-1 w-10 rounded-full bg-[#ff9933]" />
+              <span className="h-1 w-10 rounded-full bg-[#138808]" />
+              <span className="text-[11px] font-semibold uppercase tracking-[.16em] text-slate-500">Office workspace</span>
+            </div>
             <div className="mb-8 space-y-2">
               <h2 className="text-2xl font-semibold tracking-tight">{tr('login.title')}</h2>
               <p className="text-sm text-muted-foreground">{tr('login.desc')}</p>
@@ -135,7 +155,7 @@ export default function LoginModal({ isOpen, onLoginSuccess, notice, onToggleLan
                 </p>
               )}
 
-              <Button id="btn-login" type="submit" size="lg" className="h-11 w-full text-base" disabled={isLoading}>
+              <Button id="btn-login" type="submit" size="lg" className="h-11 w-full border-0 bg-[#e87916] text-base font-semibold text-white shadow-[0_6px_16px_rgba(232,121,22,.22)] hover:bg-[#cf6410] focus-visible:ring-[#e87916]" disabled={isLoading}>
                 {isLoading ? <><LoaderCircle className="animate-spin" /> {tr('login.submitting')}</> : tr('login.submit')}
               </Button>
             </form>
