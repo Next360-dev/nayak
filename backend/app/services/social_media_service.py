@@ -9,7 +9,11 @@ Business orchestration service for Social Media monitoring across:
 Provides positive vs negative sentiment aggregation and post feeds for individual MLAs.
 """
 
+import logging
+import os
 import re
+import threading
+import time
 from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, List, Optional
 
@@ -88,6 +92,61 @@ def _format_relative_time(dt_val) -> str:
     else:
         days = total_seconds // 86400
         return f"{days}d ago"
+
+
+# ── automatic background refresh ─────────────────────────────────────────────
+# Opening the social feed shows what is stored straight away. If this constituency has not been crawled
+# recently, one background crawl starts (never two at once) and the feed says `refreshing: true`
+# so the app can show the new posts as soon as they land. Nobody has to press a button.
+log = logging.getLogger(__name__)
+CRAWL_STALE_SECONDS = 3 * 3600
+CRAWL_RETRY_AFTER_FAILURE_SECONDS = 15 * 60
+MANUAL_COOLDOWN_SECONDS = 120      # the Refresh button cannot hammer Google (and get this server blocked)
+MAX_CONCURRENT_CRAWLS = 3
+_crawl_lock = threading.Lock()
+_crawling: set[str] = set()
+_last_crawl: dict[str, float] = {}
+
+
+def _crawl_key(constituency: str) -> str:
+    return re.sub(r"\s*\((SC|ST)\)", "", constituency or "").strip().lower()
+
+
+def is_crawling(constituency: Optional[str]) -> bool:
+    return bool(constituency) and _crawl_key(constituency) in _crawling
+
+
+def _run_crawl(constituency: str, mla_name: Optional[str], key: str) -> None:
+    ok = False
+    try:
+        trigger_social_media_scrape(constituency, mla_name, force=True)
+        ok = True
+    except Exception:
+        log.exception("background social crawl failed for %s", constituency)
+    finally:
+        with _crawl_lock:
+            _crawling.discard(key)
+            # a failure is retried sooner than a success
+            _last_crawl[key] = time.time() - (0 if ok else CRAWL_STALE_SECONDS - CRAWL_RETRY_AFTER_FAILURE_SECONDS)
+
+
+def kick_crawl_if_stale(constituency: Optional[str], mla_name: Optional[str]) -> bool:
+    """Start a background crawl when this constituency's data is old. Returns True if one is running now."""
+    if not constituency or constituency in ("All", "All Assembly Constituencies", "All Constituencies", "Statewide"):
+        return False
+    key = _crawl_key(constituency)
+    with _crawl_lock:
+        if key in _crawling:
+            return True
+        if len(_crawling) >= MAX_CONCURRENT_CRAWLS:
+            return False
+        if os.getenv("SOCIAL_AUTO_CRAWL", "1") == "0":
+            return False
+        if time.time() - _last_crawl.get(key, 0) < CRAWL_STALE_SECONDS:
+            return False
+        _crawling.add(key)
+    threading.Thread(target=_run_crawl, args=(constituency, mla_name, key), name=f"social-crawl-{key}", daemon=True).start()
+    return True
 
 
 def get_social_feed(
@@ -180,7 +239,8 @@ def get_social_feed(
                 COUNT(*) FILTER (WHERE platform = 'twitter') AS twitter_count,
                 COUNT(*) FILTER (WHERE platform = 'youtube') AS youtube_count,
                 COUNT(*) FILTER (WHERE platform = 'facebook') AS facebook_count,
-                COUNT(*) FILTER (WHERE platform = 'instagram') AS instagram_count
+                COUNT(*) FILTER (WHERE platform = 'instagram') AS instagram_count,
+                COUNT(*) FILTER (WHERE sentiment = 'neutral') AS neutral_count
             FROM social_media_posts
             WHERE {where_sql};
             """
@@ -190,6 +250,7 @@ def get_social_feed(
             total_cnt = stats_row[0] or 0
             pos_cnt = stats_row[1] or 0
             neg_cnt = stats_row[2] or 0
+            neutral_cnt = stats_row[7] or 0
             plat_counts = {
                 "twitter": stats_row[3] or 0,
                 "youtube": stats_row[4] or 0,
@@ -197,7 +258,8 @@ def get_social_feed(
                 "instagram": stats_row[6] or 0
             }
 
-            # If today has 0 results, fall back to historical so user always sees content
+            # If today has 0 results, fall back to older posts so the screen is not empty, and SAY so (`showing_older`).
+            showing_older = False
             if total_cnt == 0 and period == "today":
                 fallback_where = [w for w in where_clauses if "INTERVAL '24 hours'" not in w]
                 fallback_where_sql = " AND ".join(fallback_where)
@@ -209,7 +271,8 @@ def get_social_feed(
                     COUNT(*) FILTER (WHERE platform = 'twitter') AS twitter_count,
                     COUNT(*) FILTER (WHERE platform = 'youtube') AS youtube_count,
                     COUNT(*) FILTER (WHERE platform = 'facebook') AS facebook_count,
-                    COUNT(*) FILTER (WHERE platform = 'instagram') AS instagram_count
+                    COUNT(*) FILTER (WHERE platform = 'instagram') AS instagram_count,
+                    COUNT(*) FILTER (WHERE sentiment = 'neutral') AS neutral_count
                 FROM social_media_posts
                 WHERE {fallback_where_sql};
                 """
@@ -220,6 +283,8 @@ def get_social_feed(
                     total_cnt = fb_row[0] or 0
                     pos_cnt = fb_row[1] or 0
                     neg_cnt = fb_row[2] or 0
+                    neutral_cnt = fb_row[7] or 0
+                    showing_older = True
                     plat_counts = {
                         "twitter": fb_row[3] or 0,
                         "youtube": fb_row[4] or 0,
@@ -275,8 +340,8 @@ def get_social_feed(
                     "comments_count": r[13],
                     "views_count": r[14],
                     "sentiment": r[15],
-                    "sentiment_label": "Positive Post" if r[15] == "positive" else "Critical / Negative Post",
-                    "sentiment_reason": r[16] or ("Positive public feedback" if r[15] == "positive" else "Critical public grievance"),
+                    "sentiment_label": {"positive": "Positive Post", "negative": "Critical / Negative Post"}.get(r[15], "Neutral Post"),
+                    "sentiment_reason": r[16] or None,
                     "published_at": r[17].isoformat() if r[17] else None,
                     "relative_time": _format_relative_time(r[17])
                 })
@@ -321,6 +386,8 @@ def get_social_feed(
                 "total_count": total_cnt,
                 "positive_count": pos_cnt,
                 "negative_count": neg_cnt,
+                "neutral_count": neutral_cnt,
+                "showing_older": showing_older,
                 "platform_counts": plat_counts,
                 "mla": {
                     "name": mla_name or (active_mla.get("name") if active_mla else "Telangana State Leadership"),
@@ -332,6 +399,7 @@ def get_social_feed(
                     "total_posts": total_cnt,
                     "positive_posts": pos_cnt,
                     "negative_posts": neg_cnt,
+                    "neutral_posts": neutral_cnt,
                     "positive_percentage": pos_pct,
                     "negative_percentage": neg_pct,
                     "platform_counts": plat_counts
@@ -344,10 +412,18 @@ def get_social_feed(
         conn.close()
 
 
-def trigger_social_media_scrape(constituency: str, mla_name: Optional[str] = None) -> Dict[str, Any]:
+def trigger_social_media_scrape(constituency: str, mla_name: Optional[str] = None, force: bool = False) -> Dict[str, Any]:
     """
     On-demand endpoint to trigger live web scraping for an MLA across social channels.
     """
+    if not force:
+        with _crawl_lock:
+            recent = time.time() - _last_crawl.get(_crawl_key(constituency), 0) < MANUAL_COOLDOWN_SECONDS
+            busy = _crawl_key(constituency) in _crawling
+        if recent or busy:
+            # Searched a moment ago (or right now): do not hit Google again, and say so.
+            return {"status": "success", "constituency": constituency, "scraped_count": 0, "saved_count": 0,
+                    "skipped": "busy" if busy else "recent"}
     if not mla_name:
         mla_info = get_mla_for_constituency(constituency)
         mla_name = mla_info.get("name") if mla_info else "Constituency Representative"
@@ -355,6 +431,8 @@ def trigger_social_media_scrape(constituency: str, mla_name: Optional[str] = Non
     district = get_canonical_district(constituency)
     scraped = scrape_social_media_for_mla(mla_name, constituency, district)
     inserted, updated = save_social_posts_to_db(scraped)
+    with _crawl_lock:
+        _last_crawl[_crawl_key(constituency)] = time.time()
 
     return {
         "status": "success",

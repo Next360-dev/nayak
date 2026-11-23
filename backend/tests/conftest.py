@@ -1,4 +1,9 @@
+import os
+
 import pytest
+
+# Opening the social feed would start a real web crawl in the background; the test run must never do that.
+os.environ.setdefault("SOCIAL_AUTO_CRAWL", "0")
 
 
 @pytest.fixture(autouse=True)

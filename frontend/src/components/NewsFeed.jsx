@@ -72,16 +72,23 @@ export default function NewsFeed({
       return;
     }
     let cancelled = false;
-    fetchSocialMediaPosts({
-      constituency: activeConstituency,
-      mlaName: activeMlaName || 'All',
-      period,
-    }).then((res) => {
-      if (cancelled || !res || res.status !== 'success') return;
-      setMixedSocialPosts(res.posts || []);
-      setMixedSocialStats(res.stats || null);
-    }).catch(() => { if (!cancelled) { setMixedSocialPosts([]); setMixedSocialStats(null); } });
-    return () => { cancelled = true; };
+    let timer = null;
+    // The server refreshes old social data in the background by itself (`refreshing: true`).
+    // Look again every few seconds until it says it is done, so new posts appear without a reload.
+    const load = () => {
+      fetchSocialMediaPosts({
+        constituency: activeConstituency,
+        mlaName: activeMlaName || 'All',
+        period,
+      }).then((res) => {
+        if (cancelled || !res || res.status !== 'success') return;
+        setMixedSocialPosts(res.posts || []);
+        setMixedSocialStats(res.stats || null);
+        if (res.refreshing) timer = setTimeout(load, 4000);
+      }).catch(() => { if (!cancelled) { setMixedSocialPosts([]); setMixedSocialStats(null); } });
+    };
+    load();
+    return () => { cancelled = true; if (timer) clearTimeout(timer); };
   }, [socialDataReady, activeConstituency, activeMlaName, period]);
 
   // Classify articles with sentiment & statewide scope

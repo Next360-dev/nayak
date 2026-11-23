@@ -27,6 +27,13 @@ export async function fetchSocialMedia(params: { constituency?: string | null; m
   return apiFetch<any>(`/api/social_media?${q.toString()}`);
 }
 
+// Searches the public web for posts about the MLA. Takes several seconds (the server pauses between requests).
+export async function scrapeSocial(constituency: string, mla_name?: string | null): Promise<{ status: string; scraped_count: number; saved_count: number }> {
+  const q = new URLSearchParams({ constituency });
+  if (mla_name) q.set('mla_name', mla_name);
+  return apiFetch(`/api/social_media/scrape?${q.toString()}`, { method: 'POST' });
+}
+
 export async function fetchRefreshStatus(): Promise<any> {
   return apiFetch<any>('/api/news/refresh/status');
 }

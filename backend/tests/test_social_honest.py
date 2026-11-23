@@ -111,3 +111,25 @@ def test_purge_script_dry_run_then_apply(client):
     c = get_connection(); cur = c.cursor()
     cur.execute("SELECT likes_count FROM social_media_posts"); assert cur.fetchone()[0] is None
     c.close()
+
+
+def _post(url, sentiment, reason, when):
+    return {"platform": "facebook", "post_id": url[-6:], "mla_name": "Test MLA", "constituency": "Kodangal", "district": "Vikarabad",
+            "author_handle": None, "author_name": None, "content": f"Post {url[-3:]}", "url": url, "media_url": None,
+            "likes_count": None, "shares_count": None, "comments_count": None, "views_count": None,
+            "sentiment": sentiment, "sentiment_reason": reason, "published_at": when, "created_at": when}
+
+
+def test_neutral_is_counted_old_posts_are_labelled_and_no_reason_is_invented(client):
+    a = _post("https://news.google.com/rss/articles/nA1", "neutral", None, "2026-10-01T10:00:00+00:00")
+    b = _post("https://news.google.com/rss/articles/nB2", "negative", "Critical words found: \"protest\".", "2026-10-02T10:00:00+00:00")
+    assert scraper.save_social_posts_to_db([a, b]) == (2, 0)
+    assert scraper.save_social_posts_to_db([a, b]) == (0, 2)          # saving again updates, it does not count as new
+    feed = client.get("/api/social_media", params={"constituency": "Kodangal", "period": "today"}).json()
+    assert feed["showing_older"] is True                                # nothing in the last 24 hours, and the feed says so
+    assert feed["stats"]["neutral_posts"] >= 1
+    neutral = [p for p in feed["posts"] if p["url"].endswith("nA1")][0]
+    assert neutral["sentiment"] == "neutral" and neutral["sentiment_reason"] is None and neutral["author_name"] is None
+    assert neutral["sentiment_label"] == "Neutral Post"
+    c = get_connection(); cur = c.cursor()
+    cur.execute("DELETE FROM social_media_posts WHERE url LIKE '%nA1' OR url LIKE '%nB2'"); c.commit(); c.close()

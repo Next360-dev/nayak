@@ -64,6 +64,7 @@ function formatCount(num) {
 export function SocialPostCard({ post, te }) {
   const cfg = PLATFORMS[post.platform] || { name: post.platform, action: 'View post', actionTe: 'పోస్ట్ చూడండి' };
   const isPos = post.sentiment === 'positive';
+  const isNeutral = post.sentiment === 'neutral';
   const metrics = [['likes_count', Heart, te ? 'లైక్‌లు' : 'Likes'], ['comments_count', MessageCircle, te ? 'కామెంట్లు' : 'Comments'],
     ['shares_count', Repeat2, te ? 'షేర్లు' : 'Shares'], ['views_count', Eye, te ? 'వీక్షణలు' : 'Views']]
     .filter(([k]) => post[k] !== null && post[k] !== undefined);
@@ -75,13 +76,13 @@ export function SocialPostCard({ post, te }) {
           <span className="font-medium text-foreground">{cfg.name}</span>
           <span>· {post.relative_time || (te ? 'ఇటీవల' : 'Recent')}</span>
         </p>
-        <span className={cn('shrink-0 text-xs font-semibold', isPos ? 'text-emerald-700' : 'text-destructive')}>
-          {isPos ? (te ? 'సానుకూలం' : 'Positive') : (te ? 'విమర్శ / ప్రజా సమస్య' : 'Critical')}
+        <span className={cn('shrink-0 text-xs font-semibold', isPos ? 'text-emerald-700' : isNeutral ? 'text-muted-foreground' : 'text-destructive')}>
+          {isPos ? (te ? 'సానుకూలం' : 'Positive') : isNeutral ? (te ? 'తటస్థం' : 'Neutral') : (te ? 'విమర్శ / ప్రజా సమస్య' : 'Critical')}
         </span>
       </header>
 
       <div className="flex items-baseline gap-2 text-sm">
-        <span className="font-semibold">{post.author_name}</span>
+        {post.author_name && <span className="font-semibold">{post.author_name}</span>}
         {post.author_handle && <span className="text-muted-foreground">{post.author_handle}</span>}
         {post.mla_name && <span className="ml-auto truncate text-xs text-muted-foreground">{te ? 'గురించి' : 'about'} {post.mla_name}</span>}
       </div>
@@ -150,6 +151,25 @@ export default function SocialMediaView({
     loadPosts();
   }, [loadPosts]);
 
+  // The server refreshes old social data on its own (`refreshing: true`). Look again quietly until it is done.
+  useEffect(() => {
+    if (!data?.refreshing) return undefined;
+    const id = setTimeout(async () => {
+      try {
+        const res = await fetchSocialMediaPosts({
+          constituency: activeConstituency || 'All',
+          mlaName: activeMlaName || 'All',
+          period: period,
+          search: searchQuery.trim() || undefined
+        });
+        if (res && res.status === 'success') setData(res);
+      } catch (err) {
+        console.warn('Error refreshing social posts:', err);
+      }
+    }, 4000);
+    return () => clearTimeout(id);
+  }, [data, activeConstituency, activeMlaName, period, searchQuery]);
+
   const handleLiveScrape = async () => {
     if (!activeConstituency || activeConstituency === 'All') return;
     setIsScraping(true);
@@ -157,17 +177,29 @@ export default function SocialMediaView({
     try {
       const res = await triggerSocialMediaScrape(activeConstituency, activeMlaName);
       if (res && res.status === 'success') {
-        const msg = currentLang === 'te'
-          ? `సోషల్ మీడియా స్క్రేపింగ్ పూర్తయింది! ${res.saved_count || 0} పోస్టులు నవీకరించబడ్డాయి.`
-          : `Search complete. ${res.saved_count || 0} mentions saved.`;
+        let msg;
+        if (res.skipped) {
+          // The server does not hit the search engine twice within two minutes; say so instead of pretending.
+          msg = currentLang === 'te'
+            ? 'ఇప్పుడే వెతికాం. తాజా ఫలితాలు చూపబడుతున్నాయి.'
+            : 'Searched a moment ago. Showing the latest results.';
+        } else {
+          msg = currentLang === 'te'
+            ? `వెతుకులాట పూర్తయింది. ${res.saved_count || 0} పోస్టులు నమోదయ్యాయి.`
+            : `Search complete. ${res.saved_count || 0} posts saved or updated.`;
+        }
         setScrapeMsg(msg);
         setTimeout(() => setScrapeMsg(''), 5000);
         await loadPosts();
+      } else {
+        throw new Error('search failed');
       }
     } catch (e) {
       console.warn('Error triggering live scrape:', e);
-      setScrapeMsg('Scrape complete. Updated cached posts.');
-      setTimeout(() => setScrapeMsg(''), 4000);
+      setScrapeMsg(currentLang === 'te'
+        ? 'ఇప్పుడు సోషల్ మీడియాలో వెతకలేకపోయాం. కొంత సేపటి తర్వాత మళ్ళీ ప్రయత్నించండి.'
+        : 'Could not search social media right now. Try again later.');
+      setTimeout(() => setScrapeMsg(''), 6000);
     } finally {
       setIsScraping(false);
     }
@@ -184,6 +216,7 @@ export default function SocialMediaView({
     total_posts: 0,
     positive_posts: 0,
     negative_posts: 0,
+    neutral_posts: 0,
     positive_percentage: 50.0,
     negative_percentage: 50.0,
     platform_counts: { twitter: 0, youtube: 0, facebook: 0, instagram: 0 }
@@ -259,7 +292,9 @@ export default function SocialMediaView({
     ? (te ? 'సానుకూల పోస్టులు లేవు' : 'No positive posts found')
     : sentimentFilter === 'negative'
       ? (te ? 'విమర్శ / ప్రతికూల పోస్టులు లేవు' : 'No critical posts found')
-      : (te ? 'సోషల్ మీడియా పోస్టులు లేవు' : 'No social posts yet');
+      : sentimentFilter === 'neutral'
+        ? (te ? 'తటస్థ పోస్టులు లేవు' : 'No neutral posts found')
+        : (te ? 'సోషల్ మీడియా పోస్టులు లేవు' : 'No social posts yet');
 
   return (
     <section className="space-y-5" id="social-media-view-root">
@@ -283,6 +318,8 @@ export default function SocialMediaView({
         )}
       </div>
       {scrapeMsg && <p role="status" className="rounded-lg border bg-secondary/60 px-4 py-2.5 text-sm">{scrapeMsg}</p>}
+      {data?.showing_older && !data?.refreshing && <p role="status" className="rounded-lg border bg-secondary/60 px-4 py-2.5 text-sm">{currentLang === 'te' ? 'గత 24 గంటల్లో పోస్టులు లేవు. పాత పోస్టులు చూపబడుతున్నాయి.' : 'No posts in the last 24 hours. Showing older posts.'}</p>}
+      {data?.refreshing && <p role="status" className="rounded-lg border bg-secondary/60 px-4 py-2.5 text-sm">{currentLang === 'te' ? 'కొత్త పోస్టుల కోసం వెతుకుతోంది…' : 'Searching for new posts…'}</p>}
 
       {/* Numbers + tone split */}
       <div className="space-y-3">
@@ -318,7 +355,7 @@ export default function SocialMediaView({
 
         <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
           <div className="flex gap-1" role="group" aria-label={te ? 'టోన్' : 'Tone'}>
-            {[['all', te ? 'అన్నీ' : 'All', stats.total_posts], ['positive', te ? 'సానుకూలం' : 'Positive', stats.positive_posts], ['negative', te ? 'విమర్శ' : 'Critical', stats.negative_posts]].map(([id, label, n]) => (
+            {[['all', te ? 'అన్నీ' : 'All', stats.total_posts], ['positive', te ? 'సానుకూలం' : 'Positive', stats.positive_posts], ['negative', te ? 'విమర్శ' : 'Critical', stats.negative_posts], ['neutral', te ? 'తటస్థం' : 'Neutral', stats.neutral_posts ?? 0]].map(([id, label, n]) => (
               <button key={id} type="button" aria-pressed={sentimentFilter === id} className={pill(sentimentFilter === id)} onClick={() => setSentimentFilter(id)}>
                 {label} <span className={cn('text-xs tabular-nums', sentimentFilter === id ? 'text-primary-foreground/75' : 'text-muted-foreground')}>{n}</span>
               </button>

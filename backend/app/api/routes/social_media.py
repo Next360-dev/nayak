@@ -6,7 +6,8 @@ Social Media monitoring endpoints for MLAs across:
   - YouTube (▶️)
   - Facebook (📘)
 
-GET  /api/social_media         - Main feed of social posts with positive/negative sentiment breakdown
+GET  /api/social_media         - Main feed of social posts with positive/negative sentiment breakdown.
+                                 Starts a background refresh when the data is older than 3 hours (`refreshing: true`).
 POST /api/social_media/scrape  - Trigger on-demand scraping across social platforms for an MLA
 GET  /api/social_media/stats   - Summary metrics for the individual MLA
 """
@@ -46,7 +47,8 @@ def get_social_media_feed(
     categorized into Positive and Negative posts.
     """
     constituency, mla_name, district = _apply_scope(user, constituency, mla_name, district)
-    return social_media_service.get_social_feed(
+    refreshing = social_media_service.kick_crawl_if_stale(constituency, mla_name)
+    feed = social_media_service.get_social_feed(
         constituency=constituency,
         mla_name=mla_name,
         district=district,
@@ -57,6 +59,8 @@ def get_social_media_feed(
         limit=limit,
         offset=offset,
     )
+    feed["refreshing"] = refreshing  # true while a background crawl is running: the app re-checks shortly
+    return feed
 
 
 @router.post("/api/social_media/scrape")
