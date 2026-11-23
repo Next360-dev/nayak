@@ -21,7 +21,15 @@ from app.api.deps import require_admin
 from app.api.routes import auth, devices, news, politicians, translation, social_media, shares, team, dashboard, audit, account, feedback, contacts, board, work_items, saved
 from app.core.config import settings
 
-app = FastAPI(title="Nayak API")
+# The interactive API docs list every endpoint, so they are OFF unless explicitly switched on
+# (set ENABLE_API_DOCS=1 for local development). Real data was never exposed by them, but there is no reason to publish the map.
+_DOCS_ON = os.getenv("ENABLE_API_DOCS", "0") == "1"
+app = FastAPI(
+    title="Nayak API",
+    docs_url="/docs" if _DOCS_ON else None,
+    redoc_url="/redoc" if _DOCS_ON else None,
+    openapi_url="/openapi.json" if _DOCS_ON else None,
+)
 
 # ── CORS ──────────────────────────────────────────────────────────────────────
 app.add_middleware(
