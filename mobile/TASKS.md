@@ -218,3 +218,4 @@ Execution order: U0.1 -> U0.2 -> U1.1 -> U1.2 -> U1.3 -> U2.1 -> U2.2 -> U3.1 ->
 - [x] A2 alert strip on Live, A3 urgent-only + district filters, A5 directory, A6 admin activity log, A7 social platform + tone filters. A4: sources list already on the Story screen.
 - [x] C0b My team rebuilt on the UI kit. Background picture removed (file deleted, plain slate background everywhere). Titles of Home/Inbox/Team/More translated.
 - [ ] Left: translate the remaining body text (Home brief sentences, Work, Share create, Story); C8 QA on a real device (360 px, font scale 1.3, Telugu). Not checked visually: the browser extension was disconnected.
+- [x] Profile page (`app/profile.tsx`, opened from the avatar in the identity bar and from More): identity card, contact details (email, phone, email alerts), language, change password, two-tap Sign out (`ConfirmButton`, works in browsers where Alert does not). My team's Disable/Enable now uses the same two-tap confirm.

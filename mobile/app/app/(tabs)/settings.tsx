@@ -110,7 +110,7 @@ export default function SettingsScreen() {
           {
             title: 'PROFILE',
             rows: [
-              { icon: 'account-circle', iconColor: c.accent, title: name, value: leaderBits || undefined },
+              { icon: 'account-circle', iconColor: c.accent, title: name, value: leaderBits || undefined, onPress: () => router.push('/profile') },
               { icon: 'place', iconColor: c.muted, title: 'Constituency', value: constituency ?? 'Not available' },
             ],
           },

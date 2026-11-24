@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { Alert, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createTeamMember, fetchTeam, resetTeamPassword, setTeamActive, StaffMember } from '../src/api/board';
 import { ApiError } from '../src/api/client';
-import { Badge, Button, Card, EmptyState, SectionHeader, TextField, Toast, ToolPage } from '../src/ui';
+import { Badge, Button, Card, ConfirmButton, EmptyState, SectionHeader, TextField, Toast, ToolPage } from '../src/ui';
 import { relativeTime } from '../src/lib/time';
 import { space, type, useTheme } from '../src/theme';
 import { useLang } from '../src/i18n';
@@ -22,7 +22,6 @@ function Member({ m, onToast }: { m: StaffMember; onToast: (s: string) => void }
     onError: (e) => onToast((e as ApiError).message || 'Could not reset the password.'),
   });
   const toggle = useMutation({ mutationFn: () => setTeamActive(m.username, !m.is_active), onSuccess: refresh, onError: () => onToast('Could not update.') });
-  const confirmToggle = () => Alert.alert(m.is_active ? 'Disable this login?' : 'Enable this login?', m.is_active ? `${m.username} is signed out at once and cannot sign in.` : `${m.username} can sign in again.`, [{ text: 'Cancel', style: 'cancel' }, { text: m.is_active ? 'Disable' : 'Enable', onPress: () => toggle.mutate() }]);
   return (
     <View style={{ padding: space.lg, gap: space.sm, borderBottomWidth: 1, borderBottomColor: c.border }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
@@ -38,7 +37,7 @@ function Member({ m, onToast }: { m: StaffMember; onToast: (s: string) => void }
       ) : null}
       <View style={{ flexDirection: 'row', gap: space.sm }}>
         <View style={{ flex: 1 }}><Button label={open ? 'Cancel' : 'Reset password'} variant="secondary" onPress={() => { setOpen(!open); setPw(''); }} /></View>
-        <View style={{ flex: 1 }}><Button label={m.is_active ? 'Disable' : 'Enable'} variant={m.is_active ? 'danger' : 'secondary'} loading={toggle.isPending} onPress={confirmToggle} /></View>
+        <View style={{ flex: 1 }}><ConfirmButton label={m.is_active ? 'Disable' : 'Enable'} confirmLabel={m.is_active ? 'Tap again: sign them out' : 'Tap again to enable'} variant={m.is_active ? 'danger' : 'secondary'} loading={toggle.isPending} onConfirm={() => toggle.mutate()} /></View>
       </View>
     </View>
   );
