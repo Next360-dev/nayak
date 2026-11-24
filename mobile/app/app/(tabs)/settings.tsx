@@ -104,7 +104,7 @@ export default function SettingsScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: surface }}>
-      <ScreenHeader title="More" />
+      <ScreenHeader title={t('m.more')} />
       <ScrollView contentContainerStyle={{ paddingTop: space.md, paddingBottom: space.xl }} showsVerticalScrollIndicator={false}>
         <GroupedList sections={[
           {
@@ -139,11 +139,11 @@ export default function SettingsScreen() {
           {
             title: 'YOUR WORK',
             rows: [
-              { icon: 'groups', iconColor: c.text, title: 'Directory', onPress: () => router.push('/tools/directory' as never) },
-              ...(user?.role === 'admin' ? [{ icon: 'history', iconColor: c.text, title: 'Activity log', onPress: () => router.push('/tools/audit' as never) }] : []),
-              ...(user?.role === 'admin' ? [] : [{ icon: 'bookmark', iconColor: c.text, title: 'Saved stories', onPress: () => router.push('/saved') }]),
+              { icon: 'groups', iconColor: c.text, title: t('m.directory'), onPress: () => router.push('/tools/directory' as never) },
+              ...(user?.role === 'admin' ? [{ icon: 'history', iconColor: c.text, title: t('m.activity'), onPress: () => router.push('/tools/audit' as never) }] : []),
+              ...(user?.role === 'admin' ? [] : [{ icon: 'bookmark', iconColor: c.text, title: t('m.saved'), onPress: () => router.push('/saved') }]),
               ...(user?.role === 'admin' ? [] : [{ icon: 'send', iconColor: c.text, title: 'Sent shares', onPress: () => router.push('/(tabs)/sent') }]),
-              ...(user?.role !== 'admin' ? [{ icon: 'description', iconColor: c.text, title: 'Letters & petitions', onPress: () => router.push('/work') }] : []),
+              ...(user?.role !== 'admin' ? [{ icon: 'description', iconColor: c.text, title: t('m.letters'), onPress: () => router.push('/work') }] : []),
               ...(user?.role === 'mla' || user?.role === 'minister' ? [{ icon: 'groups', iconColor: c.text, title: 'My team', onPress: () => router.push('/my-team') }] : []),
             ],
           },

@@ -216,4 +216,5 @@ Execution order: U0.1 -> U0.2 -> U1.1 -> U1.2 -> U1.3 -> U2.1 -> U2.2 -> U3.1 ->
 - [x] C6 Portfolio tab (leader reads, staff edit + publish, public preview link).
 - [x] C7 Voice assistant (text; answers only from loaded office numbers; dictation via keyboard mic).
 - [x] A2 alert strip on Live, A3 urgent-only + district filters, A5 directory, A6 admin activity log, A7 social platform + tone filters. A4: sources list already on the Story screen.
-- [ ] Left: C0b rebuild `my-team.tsx`; translate Inbox/Team/Work/Share screens with `t()`; C8 QA on a real device (360 px, font 1.3, Telugu); not checked visually: browser extension was disconnected.
+- [x] C0b My team rebuilt on the UI kit. Background picture removed (file deleted, plain slate background everywhere). Titles of Home/Inbox/Team/More translated.
+- [ ] Left: translate the remaining body text (Home brief sentences, Work, Share create, Story); C8 QA on a real device (360 px, font scale 1.3, Telugu). Not checked visually: the browser extension was disconnected.

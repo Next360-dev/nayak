@@ -298,7 +298,7 @@ export default function HomeScreen() {
           />
           {news?.error ? <View style={{ marginHorizontal: space.lg, marginTop: space.md }}><Card><EmptyState icon="cloud-off" title={news.error} /></Card></View> : null}
 
-          <SectionTitle title={isStaff ? 'From your leader' : 'Picked for you'} right={inboxRows.length > 0 ? <TextLink label="Inbox" onPress={openInbox} /> : undefined} />
+          <SectionTitle title={isStaff ? t('m.fromLeader') : t('leader.pick.title')} right={inboxRows.length > 0 ? <TextLink label="Inbox" onPress={openInbox} /> : undefined} />
           <View style={{ marginHorizontal: space.lg }}>
             <Card>
               {inboxRows.length > 0 ? inboxRows.map((r, i) => (
@@ -331,7 +331,7 @@ export default function HomeScreen() {
 
           {week && (week.received + week.handled + week.sent + week.sent_done) > 0 ? (
             <View style={{ marginHorizontal: space.lg }}>
-              <SectionHeader title="This week" />
+              <SectionHeader title={t('m.week')} />
               <StatStrip items={isStaff
                 ? [{ label: 'sent up', value: week.sent }, { label: 'answered done', value: week.sent_done }, { label: 'from leader', value: week.received }]
                 : [{ label: 'received', value: week.received }, { label: 'handled', value: week.handled }]} />
@@ -346,7 +346,7 @@ export default function HomeScreen() {
             </View>
           ) : null}
 
-          <SectionTitle title={isStaff ? 'Stories to review' : 'Needs attention today'} right={stories.length > 0 ? <TextLink label="View All" onPress={openNews} /> : undefined} />
+          <SectionTitle title={isStaff ? t('m.stories.review') : t('leader.attn.title')} right={stories.length > 0 ? <TextLink label="View All" onPress={openNews} /> : undefined} />
           <View style={{ marginHorizontal: space.lg }}>
             {stories.length > 0 ? (
               <Card>
@@ -396,7 +396,7 @@ export default function HomeScreen() {
 
           {data.board ? (
             <View style={{ paddingHorizontal: space.lg }}>
-              <SectionHeader title="Team board" action="Open" onAction={openTeam} />
+              <SectionHeader title={t('m.teamboard')} action="Open" onAction={openTeam} />
               <BoardStrip board={data.board} />
             </View>
           ) : null}

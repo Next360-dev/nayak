@@ -3,6 +3,7 @@ import { KeyboardAvoidingView, Platform, RefreshControl, ScrollView, Text, View 
 import { useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../src/hooks/useAuth';
+import { useLang } from '../../src/i18n';
 import { createTask, fetchBoard, fetchTeamBriefing, resetTeamBriefing, saveTeamBriefing } from '../../src/api/board';
 import { Button, Card, EmptyState, ErrorState, ScreenHeader, SectionHeader, StatStrip, TextField, Toast } from '../../src/ui';
 import { Segmented } from '../../src/ui/NewsParts';
@@ -82,6 +83,7 @@ function AddTask({ members, onDone, onToast }: { members: string[]; onDone: () =
 export default function TeamScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const { t } = useLang();
   const { c } = useTheme();
   const isLeader = user?.role === 'mla' || user?.role === 'minister';
   const board = useQuery({ queryKey: ['board'], queryFn: fetchBoard });
@@ -107,7 +109,7 @@ export default function TeamScreen() {
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: surface }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScreenHeader
-        title="Team board"
+        title={t('m.teamboard')}
         subtitle={board.data ? `${leaderName} · ${members.length} ${members.length === 1 ? 'member' : 'members'}` : undefined}
         actions={isLeader ? [{ icon: 'groups', label: 'Manage my team', onPress: () => router.push('/my-team') }] : undefined}
       />

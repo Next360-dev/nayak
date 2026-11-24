@@ -44,10 +44,6 @@ export const line = '#E2E8F0';
 export const hairline = '#E2E8F0';
 export const shadowCard = '0 1px 2px rgba(15,23,42,0.06), 0 6px 16px rgba(15,23,42,0.06)';
 export const shadowBar = '0 -1px 0 rgba(23,23,23,0.04), 0 10px 28px rgba(23,23,23,0.14)';
-export const veil = {
-  colors: ['rgba(248,250,252,0.20)', 'rgba(248,250,252,0.93)', 'rgba(248,250,252,0.93)', 'rgba(248,250,252,0.45)'] as const,
-  locations: [0, 0.22, 0.78, 1] as const,
-};
 export const banner = { text: 'rgba(255,255,255,0.85)', textSoft: 'rgba(255,255,255,0.80)', buttonBg: 'rgba(255,255,255,0.18)', buttonBorder: 'rgba(255,255,255,0.30)' };
 export const bannerGradient = ['#0B132B', '#0B2545', '#1C3F73'] as const;
 export const bannerAccent = '#FF9933';
@@ -57,7 +53,5 @@ export function useTheme(): { c: Colors; dark: boolean } {
   return { c: palette.light, dark: false };
 }
 
-// On a phone the screens sit on the shared backdrop picture, so scenes are transparent.
-// In a browser, inactive screens stay mounted behind the active one (they are only z-indexed, never hidden),
-// so a transparent scene lets the one below show through. On web only, make the active scene opaque.
-export const sceneBackground = (typeof document !== 'undefined' ? palette.light.bg : 'transparent') as string;
+// Screens sit on a plain background (no picture): scenes are opaque everywhere, which also keeps inactive tab screens hidden on web.
+export const sceneBackground = palette.light.bg;

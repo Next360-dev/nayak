@@ -3,6 +3,7 @@ import { FlatList, RefreshControl, Text, View } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../src/hooks/useAuth';
+import { useLang } from '../../src/i18n';
 import { fetchInbox, fetchSent, updateStatus } from '../../src/api/shares';
 import { Share } from '../../src/types';
 import { Badge, Button, EmptyState, ErrorState, FilterChips, ScreenHeader, ShareRow, StickyBar, Toast } from '../../src/ui';
@@ -28,6 +29,7 @@ export default function InboxScreen() {
   const qc = useQueryClient();
   const { sent, filter: filterParam, ts } = useLocalSearchParams<{ sent?: string; filter?: string; ts?: string }>();
   const { user } = useAuth();
+  const { t } = useLang();
   const { c } = useTheme();
   const canShare = !!user && user.role !== 'admin';
   const [view, setView] = useState<'received' | 'sent'>(sent ? 'sent' : 'received');
@@ -82,12 +84,12 @@ export default function InboxScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: surface }}>
       <View style={{ backgroundColor: surface }}>
-        <ScreenHeader title="Inbox" subtitle={all.length > 0 ? `${newCount} new · ${all.length} received` : undefined} actions={[]} />
+        <ScreenHeader title={t('m.inbox.title')} subtitle={all.length > 0 ? `${newCount} new · ${all.length} received` : undefined} actions={[]} />
       </View>
       <StickyBar>
-        <Segmented options={[{ id: 'received', label: 'Received' }, { id: 'sent', label: 'Sent' }]} value={view} onChange={(v) => setView(v === 'received' ? 'received' : 'sent')} />
+        <Segmented options={[{ id: 'received', label: t('m.received') }, { id: 'sent', label: t('m.sent') }]} value={view} onChange={(v) => setView(v === 'received' ? 'received' : 'sent')} />
         {view === 'received' ? (
-          <FilterChips options={[{ key: 'all', label: 'All' }, { key: 'new', label: 'New', count: newCount }, { key: 'acting', label: 'Acting' }, { key: 'done', label: 'Done' }]} value={filter} onChange={(k) => setFilter(k as Filter)} />
+          <FilterChips options={[{ key: 'all', label: t('m.all') }, { key: 'new', label: t('m.new'), count: newCount }, { key: 'acting', label: 'Acting' }, { key: 'done', label: 'Done' }]} value={filter} onChange={(k) => setFilter(k as Filter)} />
         ) : null}
       </StickyBar>
       <FlatList

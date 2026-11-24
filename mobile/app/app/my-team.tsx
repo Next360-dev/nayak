@@ -1,292 +1,74 @@
-import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
-import { useRouter } from 'expo-router';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useAuth } from '../src/hooks/useAuth';
-import {
-  fetchTeam,
-  createTeamMember,
-  resetTeamPassword,
-  setTeamActive,
-  StaffMember,
-} from '../src/api/board';
-import { palette, surface } from '../src/theme';
+import React, { useState } from 'react';
+import { Alert, Text, View } from 'react-native';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { createTeamMember, fetchTeam, resetTeamPassword, setTeamActive, StaffMember } from '../src/api/board';
+import { ApiError } from '../src/api/client';
+import { Badge, Button, Card, EmptyState, SectionHeader, TextField, Toast, ToolPage } from '../src/ui';
+import { relativeTime } from '../src/lib/time';
+import { space, type, useTheme } from '../src/theme';
+import { useLang } from '../src/i18n';
 
-const MIN_PW = 12;
+const MIN = 12; // the server enforces the same rule
 
-export default function MyTeamScreen() {
-  const router = useRouter();
-  const { user } = useAuth();
+function Member({ m, onToast }: { m: StaffMember; onToast: (s: string) => void }) {
+  const { c } = useTheme();
   const qc = useQueryClient();
-
-  const isLeader = user?.role === 'mla' || user?.role === 'minister';
-
-  const { data: staff, isLoading, isError, refetch } = useQuery<StaffMember[]>({
-    queryKey: ['my-team'],
-    queryFn: fetchTeam,
-    enabled: !!user && isLeader,
+  const [pw, setPw] = useState('');
+  const [open, setOpen] = useState(false);
+  const refresh = () => { void qc.invalidateQueries({ queryKey: ['team'] }); };
+  const reset = useMutation({
+    mutationFn: () => resetTeamPassword(m.username, pw),
+    onSuccess: () => { setPw(''); setOpen(false); onToast(`Password reset for ${m.username}. They must change it at next sign-in.`); },
+    onError: (e) => onToast((e as ApiError).message || 'Could not reset the password.'),
   });
-
-  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  // Add form
-  const [showAdd, setShowAdd] = useState(false);
-  const [newUsername, setNewUsername] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-
-  // Reset form
-  const [resetFor, setResetFor] = useState<string | null>(null);
-  const [resetPw, setResetPw] = useState('');
-
-  const reload = useCallback(() => {
-    qc.invalidateQueries({ queryKey: ['my-team'] });
-    void refetch();
-  }, [qc, refetch]);
-
-  const run = async (fn: () => Promise<any>, okText: string) => {
-    setBusy(true);
-    setMsg(null);
-    try {
-      await fn();
-      setMsg({ ok: true, text: okText });
-      reload();
-      return true;
-    } catch (e: any) {
-      setMsg({ ok: false, text: e?.message || 'Request failed' });
-      return false;
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleAdd = async () => {
-    const u = newUsername.trim().toLowerCase();
-    if (!u || !newPassword) {
-      setMsg({ ok: false, text: 'Enter username and password.' });
-      return;
-    }
-    if (newPassword.length < MIN_PW) {
-      setMsg({ ok: false, text: `Password must be at least ${MIN_PW} characters.` });
-      return;
-    }
-    const ok = await run(
-      () => createTeamMember(u, newPassword),
-      `Added ${u}.`,
-    );
-    if (ok) {
-      setNewUsername('');
-      setNewPassword('');
-      setShowAdd(false);
-    }
-  };
-
-  const handleReset = async (username: string) => {
-    if (!resetPw) {
-      setMsg({ ok: false, text: 'Enter a new password.' });
-      return;
-    }
-    if (resetPw.length < MIN_PW) {
-      setMsg({ ok: false, text: `Password must be at least ${MIN_PW} characters.` });
-      return;
-    }
-    const ok = await run(
-      () => resetTeamPassword(username, resetPw),
-      `Password reset for ${username}. They must change it on next login.`,
-    );
-    if (ok) {
-      setResetFor(null);
-      setResetPw('');
-    }
-  };
-
-  const handleToggle = async (s: StaffMember) => {
-    const next = s.is_active === false;
-    await run(
-      () => setTeamActive(s.username, next),
-      next ? `Enabled ${s.username}.` : `Disabled ${s.username}.`,
-    );
-  };
-
-  if (!user) {
-    return <View style={styles.center}><ActivityIndicator /></View>;
-  }
-  if (!isLeader) {
-    return (
-      <View style={styles.center}>
-        <Text>My team is only for leaders.</Text>
-        <TouchableOpacity onPress={() => router.back()}><Text style={styles.link}>Back</Text></TouchableOpacity>
-      </View>
-    );
-  }
-
-  if (isLoading) return <View style={styles.center}><ActivityIndicator /></View>;
-  if (isError) {
-    return (
-      <View style={styles.center}>
-        <Text>Failed to load team.</Text>
-        <TouchableOpacity onPress={() => refetch()}><Text style={styles.link}>Retry</Text></TouchableOpacity>
-      </View>
-    );
-  }
-
-  const list = staff || [];
-
+  const toggle = useMutation({ mutationFn: () => setTeamActive(m.username, !m.is_active), onSuccess: refresh, onError: () => onToast('Could not update.') });
+  const confirmToggle = () => Alert.alert(m.is_active ? 'Disable this login?' : 'Enable this login?', m.is_active ? `${m.username} is signed out at once and cannot sign in.` : `${m.username} can sign in again.`, [{ text: 'Cancel', style: 'cancel' }, { text: m.is_active ? 'Disable' : 'Enable', onPress: () => toggle.mutate() }]);
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={{ paddingBottom: 40 }}>
-      <View style={styles.headerRow}>
-        <Text style={styles.title}>My team</Text>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} accessibilityLabel="Back" accessibilityRole="button">
-          <Text style={styles.backBtnText}>‹ Back</Text>
-        </TouchableOpacity>
+    <View style={{ padding: space.lg, gap: space.sm, borderBottomWidth: 1, borderBottomColor: c.border }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+        <Text style={[type.body, { color: c.text, fontWeight: '700', flex: 1 }]}>{m.username}</Text>
+        <Badge label={m.is_active ? 'Active' : 'Disabled'} tone={m.is_active ? 'success' : 'danger'} />
       </View>
-      <Text style={styles.sub}>Add, reset passwords, or disable your own staff. Reset sets &quot;must change password&quot;.</Text>
-
-      {msg ? (
-        <Text style={[styles.msg, msg.ok ? styles.msgOk : styles.msgErr]}>{msg.text}</Text>
+      <Text style={[type.caption, { color: c.muted }]}>{m.last_login ? `Last sign-in ${relativeTime(m.last_login)}` : 'Never signed in'}</Text>
+      {open ? (
+        <>
+          <TextField label={`New password (at least ${MIN} characters)`} value={pw} onChangeText={setPw} secure autoCapitalize="none" />
+          <Button label="Reset password" loading={reset.isPending} disabled={pw.length < MIN} onPress={() => reset.mutate()} />
+        </>
       ) : null}
-
-      {list.length === 0 ? (
-        <Text style={styles.empty}>No staff yet.</Text>
-      ) : null}
-
-      {list.map((s) => {
-        const disabled = s.is_active === false;
-        return (
-          <View key={s.username} style={[styles.row, disabled && styles.rowDisabled]}>
-            <View style={styles.rowMain}>
-              <Text style={styles.name}>
-                {s.username}
-                {disabled ? <Text style={styles.badge}>  disabled</Text> : null}
-              </Text>
-              <Text style={styles.meta}>
-                last login {s.last_login ? new Date(s.last_login).toLocaleString() : 'never'}
-              </Text>
-            </View>
-
-            {resetFor === s.username ? (
-              <View style={styles.resetBox}>
-                <TextInput
-                  style={styles.input}
-                  value={resetPw}
-                  onChangeText={setResetPw}
-                  placeholder={`New password (${MIN_PW}+ chars)`}
-                  secureTextEntry
-                  autoCapitalize="none"
-                  accessibilityLabel={`New password for ${s.username}`}
-                />
-                <View style={styles.btnRow}>
-                  <TouchableOpacity
-                    style={[styles.btn, styles.btnPrimary, busy && styles.btnDisabled]}
-                    onPress={() => handleReset(s.username)}
-                    disabled={busy}
-                  >
-                    <Text style={styles.btnPrimaryText}>{busy ? 'Saving…' : 'Save'}</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.btn, styles.btnOutline]}
-                    onPress={() => { setResetFor(null); setResetPw(''); setMsg(null); }}
-                  >
-                    <Text style={styles.btnOutlineText}>Cancel</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ) : (
-              <View style={styles.btnRow}>
-                <TouchableOpacity
-                  style={[styles.btn, styles.btnOutline]}
-                  onPress={() => { setResetFor(s.username); setResetPw(''); setMsg(null); }}
-                >
-                  <Text style={styles.btnOutlineText}>Reset password</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.btn, disabled ? styles.btnEnable : styles.btnDisable, busy && styles.btnDisabled]}
-                  onPress={() => handleToggle(s)}
-                  disabled={busy}
-                >
-                  <Text style={disabled ? styles.btnEnableText : styles.btnDisableText}>
-                    {disabled ? 'Enable' : 'Disable'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-        );
-      })}
-
-      <View style={styles.section}>
-        <TouchableOpacity style={styles.addToggle} onPress={() => setShowAdd((v) => !v)} accessibilityRole="button">
-          <Text style={styles.addToggleText}>{showAdd ? '− Hide add form' : '+ Add staff'}</Text>
-        </TouchableOpacity>
-
-        {showAdd ? (
-          <View style={styles.addBox}>
-            <TextInput
-              style={styles.input}
-              value={newUsername}
-              onChangeText={setNewUsername}
-              placeholder="Username"
-              autoCapitalize="none"
-              autoCorrect={false}
-              accessibilityLabel="New staff username"
-            />
-            <TextInput
-              style={styles.input}
-              value={newPassword}
-              onChangeText={setNewPassword}
-              placeholder={`Password (${MIN_PW}+ chars)`}
-              secureTextEntry
-              autoCapitalize="none"
-              accessibilityLabel="New staff password"
-            />
-            <TouchableOpacity
-              style={[styles.btn, styles.btnPrimary, busy && styles.btnDisabled]}
-              onPress={handleAdd}
-              disabled={busy}
-            >
-              <Text style={styles.btnPrimaryText}>{busy ? 'Adding…' : 'Add staff'}</Text>
-            </TouchableOpacity>
-          </View>
-        ) : null}
+      <View style={{ flexDirection: 'row', gap: space.sm }}>
+        <View style={{ flex: 1 }}><Button label={open ? 'Cancel' : 'Reset password'} variant="secondary" onPress={() => { setOpen(!open); setPw(''); }} /></View>
+        <View style={{ flex: 1 }}><Button label={m.is_active ? 'Disable' : 'Enable'} variant={m.is_active ? 'danger' : 'secondary'} loading={toggle.isPending} onPress={confirmToggle} /></View>
       </View>
-    </ScrollView>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
-  link: { color: palette.light.accent, marginTop: 8, fontSize: 15 },
-  screen: { flex: 1, padding: 12, backgroundColor: 'transparent' },
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
-  title: { fontSize: 22, fontWeight: '700' },
-  backBtn: { paddingHorizontal: 8, paddingVertical: 8, minHeight: 44, justifyContent: 'center' },
-  backBtnText: { color: palette.light.accent, fontSize: 15 },
-  sub: { fontSize: 12, color: '#666', marginBottom: 10 },
-  msg: { fontSize: 13, padding: 8, borderRadius: 6, marginBottom: 10 },
-  msgOk: { color: palette.light.ok, backgroundColor: palette.light.okBg },
-  msgErr: { color: palette.light.danger, backgroundColor: palette.light.dangerBg },
-  empty: { fontSize: 13, color: '#999', fontStyle: 'italic', marginVertical: 8 },
-  row: { backgroundColor: '#f5f5f5', borderRadius: 8, padding: 10, marginBottom: 8 },
-  rowDisabled: { opacity: 0.6 },
-  rowMain: { marginBottom: 8 },
-  name: { fontSize: 15, fontWeight: '600' },
-  badge: { fontSize: 12, color: palette.light.danger, fontWeight: '600' },
-  meta: { fontSize: 11, color: '#888', marginTop: 2 },
-  resetBox: { gap: 6 },
-  input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 6, padding: 8, fontSize: 14, marginBottom: 6, backgroundColor: surface },
-  btnRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  btn: { paddingHorizontal: 10, paddingVertical: 8, borderRadius: 6, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
-  btnPrimary: { backgroundColor: palette.light.accent },
-  btnPrimaryText: { color: palette.light.card, fontSize: 13, fontWeight: '600' },
-  btnOutline: { backgroundColor: '#e0e0e0' },
-  btnOutlineText: { color: '#333', fontSize: 13 },
-  btnDisable: { backgroundColor: palette.light.dangerBg },
-  btnDisableText: { color: palette.light.danger, fontSize: 13, fontWeight: '600' },
-  btnEnable: { backgroundColor: palette.light.okBg },
-  btnEnableText: { color: palette.light.ok, fontSize: 13, fontWeight: '600' },
-  btnDisabled: { opacity: 0.5 },
-  section: { marginTop: 16 },
-  addToggle: { backgroundColor: palette.light.accent, padding: 12, borderRadius: 8, alignItems: 'center', minHeight: 44, justifyContent: 'center' },
-  addToggleText: { color: palette.light.card, fontWeight: '600' },
-  addBox: { marginTop: 10, padding: 10, backgroundColor: '#f0f4fa', borderRadius: 8 },
-});
+export default function MyTeamScreen() {
+  const { t } = useLang();
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ['team'], queryFn: fetchTeam });
+  const [u, setU] = useState('');
+  const [pw, setPw] = useState('');
+  const [toast, setToast] = useState<string | null>(null);
+  const add = useMutation({
+    mutationFn: () => createTeamMember(u.trim().toLowerCase(), pw),
+    onSuccess: () => { setToast(`Added ${u.trim()}. They must change the password at first sign-in.`); setU(''); setPw(''); void qc.invalidateQueries({ queryKey: ['team'] }); },
+    onError: (e) => setToast((e as ApiError).message || 'Could not add the staff member.'),
+  });
+  const rows = q.data ?? [];
+  return (
+    <ToolPage title={t('btn.myTeam')} subtitle="Your office staff" refreshing={q.isRefetching} onRefresh={() => { void q.refetch(); }} error={q.isError} onRetry={() => { void q.refetch(); }}>
+      <Card style={{ padding: space.lg, gap: space.md }}>
+        <TextField label="New staff username" value={u} onChangeText={setU} autoCapitalize="none" autoCorrect={false} />
+        <TextField label={`Temporary password (at least ${MIN} characters)`} value={pw} onChangeText={setPw} secure autoCapitalize="none" />
+        <Button label="Add staff member" loading={add.isPending} disabled={!u.trim() || pw.length < MIN} onPress={() => add.mutate()} />
+      </Card>
+      <SectionHeader title={`${rows.length} ${rows.length === 1 ? 'member' : 'members'}`} />
+      <Card>
+        {rows.length === 0 ? <EmptyState icon="groups" title={q.isLoading ? '…' : 'No staff yet'} hint="Add your first staff member above." /> : rows.map((m) => <Member key={m.username} m={m} onToast={setToast} />)}
+      </Card>
+      {toast ? <Toast message={toast} visible onDismiss={() => setToast(null)} /> : null}
+    </ToolPage>
+  );
+}

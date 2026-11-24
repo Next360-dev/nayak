@@ -179,3 +179,6 @@ The master admin remains the **system control room** and can inspect project, Wh
 ## Staff home and post media update (2026-11-24)
 - Staff Home now puts its daily create/update actions at the top, followed by work status, story review, feedback, team messages, and office tools. The urgent strip only includes priority-1 items within the selected constituency.
 - Compose and schedule accepts one JPEG, PNG, or WebP attachment up to 2 MB. The image is stored with the post and appears in the staff list and leader approval queue. Migration `013_composed_post_image.sql` adds the optional media column.
+
+## Mobile parity (2026-11-24)
+The phone app follows the web app: navy/tricolor theme, tabs Home / Live / Social / History / Portfolio, identity bar, leader and staff homes, and the office tools (top alerts, watchlist, post studio, projects, WhatsApp intake, AI inbox, survey results, briefing, voice assistant, directory, admin activity log). Telugu/English text is generated from the web strings (`node scripts/sync_i18n.mjs`). Public survey is per leader: `/survey/<leader_username>`; each office sees only its own responses (migration 016). Public pages (survey form, portfolio preview) open in the browser.

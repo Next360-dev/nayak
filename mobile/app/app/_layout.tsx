@@ -6,9 +6,8 @@ import { AuthProvider, useAuth } from '../src/hooks/useAuth';
 import { LangProvider } from '../src/i18n';
 import { StatusBar } from 'expo-status-bar';
 import { AndroidImportance } from 'expo-notifications';
-import { LinearGradient } from 'expo-linear-gradient';
-import { palette, sceneBackground, veil } from '../src/theme';
-import { Image, Platform, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { palette, sceneBackground } from '../src/theme';
+import { Platform, StyleSheet, View } from 'react-native';
 
 // Configure notification handling (not on web: push cannot work in a browser and the library only logs warnings there)
 if (Platform.OS !== 'web') Notifications.setNotificationHandler({
@@ -81,23 +80,6 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-function Backdrop() {
-  const { width, height } = useWindowDimensions();
-  // The picture is 941x1672. Scale it to the screen height and anchor it right so the leader at the bottom stays in view.
-  const imgW = height * (941 / 1672);
-  return (
-    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
-      <Image
-        source={require('../assets/bg.jpg')}
-        accessibilityElementsHidden
-        importantForAccessibility="no-hide-descendants"
-        style={{ position: 'absolute', top: 0, height, width: Math.max(imgW, width), left: -Math.max(imgW - width, 0) * 0.75 }}
-      />
-      <LinearGradient colors={veil.colors} locations={veil.locations} style={StyleSheet.absoluteFill} />
-    </View>
-  );
-}
-
 export default function RootLayout() {
   useEffect(() => {
     if (Platform.OS === 'android') {
@@ -112,7 +94,7 @@ export default function RootLayout() {
       <AuthProvider>
         <LangProvider>
         <AuthGate>
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: palette.light.bg }]}><Backdrop /></View>
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: palette.light.bg }]} />
           <StatusBar style="dark" />
           <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: sceneBackground } }} />
         </AuthGate>
