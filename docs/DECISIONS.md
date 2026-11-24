@@ -16,3 +16,4 @@
 - 2026-11-24 PROPOSED: navigation uses the five product pillars (Today / Intelligence / Constituency / Office / Me + Assistant); metrics layer in W0; Legislative needs a data-source spike first (docs/PRODUCT_PILLARS.md).
 - 2026-11-24 PROPOSED: plain Python first, AI only where nothing else works (speech in/out, OCR for bad scans, translation); AI sits behind one gateway (cache, metering, budget caps, fakes, no-AI fallback, per-office flags); voice in 3 tiers: typed + device speech (free), IVR keypad menus with pre-recorded prompts, open-speech IVR as a paid add-on (docs/AI_BUDGET_PLAN.md).
 - 2026-11-24 OWNER RULE: build all 36 modules in plain Python; AI only at the end, optional, never required (CLAUDE.md standing decisions).
+- 2026-11-24 MASTER_PLAN + MODULE_SPECS + TIGHTEN_UP written: one top-to-bottom execution plan with defaults for open decisions; finished modules get a tighten-up track (T1-T21) from a code audit before new modules are added.
