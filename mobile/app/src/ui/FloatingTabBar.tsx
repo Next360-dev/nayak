@@ -19,6 +19,8 @@ type Icon = React.ComponentProps<typeof MaterialIcons>['name'];
 const ICONS: Record<string, Icon> = {
   index: 'home-filled', news: 'sensors', social: 'forum', history: 'history', portfolio: 'account-balance', inbox: 'mail-outline', sent: 'send', team: 'groups', users: 'people-outline', settings: 'grid-view',
 };
+// Reached from the identity bar and Home, not from the bar. They stay real routes: `href: null` would make navigating to them do nothing.
+const NOT_IN_BAR = new Set(['inbox', 'sent', 'team', 'settings']);
 const LABEL_KEYS: Record<string, string> = { index: 'm.tab.home', news: 'm.tab.live', social: 'm.tab.social', history: 'm.tab.history', portfolio: 'm.tab.portfolio', settings: 'm.more', users: 'm.users' };
 
 // Floating rounded bar. It stays in the layout flow (not absolutely positioned) so no screen's content is hidden behind it.
@@ -37,7 +39,7 @@ export default function FloatingTabBar({ state, descriptors }: BottomTabBarProps
       >
         {state.routes.map((route, index) => {
           const { options } = descriptors[route.key];
-          if ((options as { href?: string | null }).href === null) return null;
+          if ((options as { href?: string | null }).href === null || NOT_IN_BAR.has(route.name)) return null;
           const focused = state.index === index;
           const label = LABEL_KEYS[route.name] ? t(LABEL_KEYS[route.name]) : (typeof options.title === 'string' ? options.title : route.name);
           const badge = options.tabBarBadge;

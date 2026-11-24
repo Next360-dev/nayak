@@ -196,7 +196,7 @@ export default function HomeScreen() {
     { icon: 'construction', label: t('proj.title'), sub: board ? `${boardOpen} open tasks` : 'Track development', onPress: go2('/tools/projects') },
     { icon: 'mic', label: t('voice.button'), sub: 'Ask your office', onPress: go2('/tools/voice'), highlight: true },
     { icon: 'lightbulb-outline', label: 'AI inbox', sub: 'Suggested next steps', onPress: go2('/tools/suggestions') },
-    { icon: 'description', label: t('btn.briefing'), sub: 'Today in one page', onPress: go2('/tools/briefing') },
+    { icon: 'description', label: t('brief.btn'), sub: 'Today in one page', onPress: go2('/tools/briefing') },
     { icon: 'sensors', label: t('btn.openFeed'), sub: (news?.today ?? 0) > 0 ? `${news?.today} today` : 'Live news', onPress: openNews },
     { icon: 'forum', label: t('survey.results.title'), sub: 'Citizen messages', onPress: go2('/tools/survey') },
     { icon: 'bookmark-border', label: t('m.saved'), sub: savedCount === undefined ? 'Reading list' : savedCount > 0 ? `${savedCount} saved` : 'Nothing saved yet', onPress: () => router.push('/saved') },

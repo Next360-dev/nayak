@@ -12,7 +12,7 @@ export default function BriefingScreen() {
   const { c } = useTheme();
   const q = useQuery({ queryKey: ['briefing-read', lang], queryFn: () => fetchTeamBriefing(lang) });
   return (
-    <ToolPage title={t('btn.briefing')} subtitle={q.data?.edited ? `Edited${q.data.edited_by ? ` by ${q.data.edited_by}` : ''}` : undefined} refreshing={q.isRefetching} onRefresh={() => { void q.refetch(); }} error={q.isError} onRetry={() => { void q.refetch(); }}>
+    <ToolPage title={t('brief.title')} subtitle={q.data?.edited ? `Edited${q.data.edited_by ? ` by ${q.data.edited_by}` : ''}` : undefined} refreshing={q.isRefetching} onRefresh={() => { void q.refetch(); }} error={q.isError} onRetry={() => { void q.refetch(); }}>
       <Card style={{ padding: space.lg }}>
         {q.data?.text ? <Text selectable style={[type.reading, { color: c.text }]}>{q.data.text}</Text> : <EmptyState icon="description" title={q.isLoading ? '…' : 'No briefing yet today'} />}
       </Card>

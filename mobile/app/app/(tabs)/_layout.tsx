@@ -46,11 +46,11 @@ export default function TabsLayout() {
       <Tabs.Screen name="social" options={{ title: 'Social', headerShown: false, href: show(isLeader || isStaff) }} />
       <Tabs.Screen name="history" options={{ title: 'History', headerShown: false, href: show(isLeader || isStaff) }} />
       <Tabs.Screen name="portfolio" options={{ title: 'Portfolio', headerShown: false, href: show(isLeader || isStaff) }} />
-      <Tabs.Screen name="inbox" options={{ title: 'Inbox', href: null, tabBarBadge: unread > 0 ? unread : undefined }} />
-      <Tabs.Screen name="sent" options={{ title: 'Sent', href: null }} />
-      <Tabs.Screen name="team" options={{ title: 'Team', href: null }} />
+      <Tabs.Screen name="inbox" options={{ title: 'Inbox', tabBarBadge: unread > 0 ? unread : undefined }} />
+      <Tabs.Screen name="sent" options={{ title: 'Sent' }} />
+      <Tabs.Screen name="team" options={{ title: 'Team' }} />
       <Tabs.Screen name="users" options={{ title: 'Users', headerShown: true, href: show(isAdmin) }} />
-      <Tabs.Screen name="settings" options={{ title: 'More', href: null }} />
+      <Tabs.Screen name="settings" options={{ title: 'More' }} />
     </Tabs>
   );
 }
