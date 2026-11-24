@@ -98,3 +98,6 @@ Migration (idempotent) | typed schemas | service + repository layers | role and 
 
 ## 10. Honest limits
 Python can make our code reliable; it cannot make outside sources reliable. We design for failure: timeouts, retries, breakers, clear status on screen, and alerts to the admin when a job is stale. Real voice/IVR and real posting to platforms still need provider accounts and budget (owner).
+
+## 11. Update (see docs/PRODUCT_PILLARS.md)
+Group `app/modules/` by pillar: `political/`, `legislative/`, `constituency/`, `office/`, `assistant/`, plus `platform/`. Add a `metrics` module (timestamps for alert notify/acknowledge, grievance assign/close, evidence) in W0. Pillar 5 is Python-first (templates, extractive summaries, Postgres search); an LLM is an optional per-office plug-in with human approval.

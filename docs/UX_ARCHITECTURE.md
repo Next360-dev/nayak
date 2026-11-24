@@ -57,3 +57,6 @@ Each module ships on web AND phone before the next starts.
 2. Web: left sidebar instead of the top tabs?
 3. Should staff and leaders share slot 2's name "Work", or use "Decisions" (leader) / "Office" (staff)?
 4. Which wave first after S0: 1 (daily office) as planned, or 2 (grievances) if a client asks for it?
+
+## 9. Update (see docs/PRODUCT_PILLARS.md section 2)
+The slots are renamed to match the five product pillars: Today / **Intelligence** (was Media; now also Legislative) / Constituency / **Office** (was Work) / Me, plus the floating Assistant. Everything else in this plan stands.
