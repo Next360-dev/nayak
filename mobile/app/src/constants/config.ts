@@ -22,3 +22,6 @@ export const BUILD_PROFILE: string =
 export const MAX_REPLY_CHARS = 2000;
 export const PAGE_SIZE = 20;
 export const UNREAD_POLL_MS = 60000;
+
+// The public web app: survey and portfolio pages are opened/shared from the phone, not rebuilt natively.
+export const PUBLIC_WEB_URL = process.env.EXPO_PUBLIC_WEB_URL || 'https://nayak-two.vercel.app';

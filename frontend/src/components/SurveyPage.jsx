@@ -12,7 +12,7 @@ const ROLES = ['citizen', 'staff', 'mla', 'minister', 'other'];
 const CATEGORIES = ['road', 'water', 'electricity', 'health', 'education', 'police', 'other'];
 const EMPTY_FORM = { name: '', role: '', category: '', message: '', email: '' };
 
-export default function SurveyPage({ onToggleLang }) {
+export default function SurveyPage({ onToggleLang, leader }) {
   const { tr } = useLang();
   const [form, setForm] = useState(EMPTY_FORM);
   const [sending, setSending] = useState(false);
@@ -25,7 +25,7 @@ export default function SurveyPage({ onToggleLang }) {
     setError('');
     setSending(true);
     try {
-      await submitSurvey(form);
+      await submitSurvey({ ...form, leader });
       setDone(true);
     } catch (err) {
       setError(err.message || tr('survey.error'));

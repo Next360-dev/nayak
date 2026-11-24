@@ -2,8 +2,8 @@ import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { flag, radius, space, surface, useTheme, white } from '../theme';
-import { Badge, Monogram } from './index';
+import { flag, highlight, radius, space, surface, useTheme, white } from '../theme';
+import { Badge, Monogram } from './primitives';
 
 type Icon = React.ComponentProps<typeof MaterialIcons>['name'];
 
@@ -222,7 +222,7 @@ export function StatusBrief({ headline, sub, allClear, date, tiles }: { headline
   );
 }
 
-export type ShortcutTile = { icon: Icon; label: string; sub: string; onPress: () => void; primary?: boolean; badge?: number; alert?: boolean };
+export type ShortcutTile = { icon: Icon; label: string; sub: string; onPress: () => void; primary?: boolean; highlight?: boolean; badge?: number; alert?: boolean };
 
 // Shortcuts as a 2x2 grid of cards. Each says something live (a count or a status), not just a name.
 // One tile can be primary (gold fill): that is the thing the user most likely came to do.
@@ -246,8 +246,8 @@ export function ShortcutGrid({ tiles }: { tiles: ShortcutTile[] }) {
             })}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <View style={{ width: 40, height: 40, borderRadius: radius.tile, backgroundColor: t.primary ? 'rgba(255,255,255,0.18)' : c.accentBg, alignItems: 'center', justifyContent: 'center' }}>
-                <MaterialIcons name={t.icon} size={22} color={t.primary ? c.onAccent : c.accentText} />
+              <View style={{ width: 40, height: 40, borderRadius: radius.tile, backgroundColor: t.primary ? 'rgba(255,255,255,0.18)' : t.highlight ? highlight : c.accentBg, alignItems: 'center', justifyContent: 'center' }}>
+                <MaterialIcons name={t.icon} size={22} color={t.primary || t.highlight ? white : c.accentText} />
                 {t.badge ? (
                   <View style={{ position: 'absolute', top: -6, right: -6, minWidth: 18, height: 18, borderRadius: radius.badge, backgroundColor: c.danger, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 }}>
                     <Text style={{ color: white, fontSize: 11, fontWeight: '700' }}>{t.badge}</Text>

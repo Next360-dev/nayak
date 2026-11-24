@@ -4,7 +4,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { addTaskNote, fetchTaskNotes, TeamTask, updateTask } from '../api/board';
 import { radius, space, type, useTheme } from '../theme';
 import { relativeTime } from '../lib/time';
-import { Badge, Button, TextField } from './index';
+import { Badge } from './primitives';
+import { Button } from './Button';
+import { TextField } from './TextField';
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 export const isOverdue = (t: TeamTask) => t.status !== 'done' && !!t.due_date && t.due_date.slice(0, 10) < todayIso();

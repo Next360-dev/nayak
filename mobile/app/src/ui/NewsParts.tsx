@@ -5,7 +5,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { banner, ink, radius, space, surface, tints, white, useTheme } from '../theme';
 import { relativeTime } from '../lib/time';
-import { Card } from './index';
+import { Card } from './primitives';
 
 type Icon = React.ComponentProps<typeof MaterialIcons>['name'];
 export type Tone = 'negative' | 'positive' | 'statewide' | 'neutral';

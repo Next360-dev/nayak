@@ -45,6 +45,7 @@ import {
 } from './utils/api';
 
 export default function App() {
+  const surveyMatch = window.location.pathname.match(/^\/survey\/([^/]+)\/?$/);
   const publicPortfolioMatch = window.location.pathname.match(/^\/public\/portfolio\/([^/]+)\/?$/);
   // Session & Authentication
   const [currentUser, setCurrentUser] = useState(() => {
@@ -575,7 +576,7 @@ export default function App() {
 
   return (
     <LangProvider lang={currentLang}>
-    {publicPortfolioMatch ? <PublicPortfolioPage username={decodeURIComponent(publicPortfolioMatch[1])} /> : window.location.pathname.replace(/\/+$/, '') === '/survey' ? <SurveyPage onToggleLang={toggleLang} /> :
+    {publicPortfolioMatch ? <PublicPortfolioPage username={decodeURIComponent(publicPortfolioMatch[1])} /> : surveyMatch ? <SurveyPage onToggleLang={toggleLang} leader={decodeURIComponent(surveyMatch[1])} /> :
     <>
       {/* Fullscreen Login Modal */}
       <LoginModal

@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { radius, shadowBar, space, useTheme } from '../theme';
+import { useLang } from '../i18n';
 
 type BottomTabBarProps = {
   state: { index: number; routes: { key: string; name: string; params?: object }[] };
@@ -16,15 +17,16 @@ type BottomTabBarProps = {
 };
 type Icon = React.ComponentProps<typeof MaterialIcons>['name'];
 const ICONS: Record<string, Icon> = {
-  index: 'home-filled', news: 'article', inbox: 'mail-outline', sent: 'send', team: 'groups', users: 'people-outline', settings: 'grid-view',
+  index: 'home-filled', news: 'sensors', social: 'forum', history: 'history', portfolio: 'account-balance', inbox: 'mail-outline', sent: 'send', team: 'groups', users: 'people-outline', settings: 'grid-view',
 };
-const LABELS: Record<string, string> = { settings: 'More' };
+const LABEL_KEYS: Record<string, string> = { index: 'm.tab.home', news: 'm.tab.live', social: 'm.tab.social', history: 'm.tab.history', portfolio: 'm.tab.portfolio', settings: 'm.more', users: 'm.users' };
 
 // Floating rounded bar. It stays in the layout flow (not absolutely positioned) so no screen's content is hidden behind it.
 export default function FloatingTabBar({ state, descriptors }: BottomTabBarProps) {
   const router = useRouter();
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
+  const { t } = useLang();
   return (
     <View style={{ paddingHorizontal: space.lg, paddingTop: space.sm, paddingBottom: Math.max(insets.bottom, space.md), backgroundColor: c.bg }}>
       <View
@@ -37,7 +39,7 @@ export default function FloatingTabBar({ state, descriptors }: BottomTabBarProps
           const { options } = descriptors[route.key];
           if ((options as { href?: string | null }).href === null) return null;
           const focused = state.index === index;
-          const label = LABELS[route.name] ?? (typeof options.title === 'string' ? options.title : route.name);
+          const label = LABEL_KEYS[route.name] ? t(LABEL_KEYS[route.name]) : (typeof options.title === 'string' ? options.title : route.name);
           const badge = options.tabBarBadge;
   const onPress = () => {
     if (focused) return;

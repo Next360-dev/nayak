@@ -11,10 +11,16 @@ import { Badge, Card, EmptyState, ErrorState, HomeSkeleton, Pill, Row, SectionHe
 import { updateStatus } from '../../src/api/shares';
 import { Hero, NewsItem, ReachCard, SectionTitle, ShortcutGrid, ShortcutTile, StatusBrief, TextLink } from '../../src/ui/HomeParts';
 import { fetchSaved } from '../../src/api/saved';
+import { useLang } from '../../src/i18n';
 import { apiFetch } from '../../src/api/client';
 import { relativeTime } from '../../src/lib/time';
 import { rememberStory } from '../../src/lib/storyCache';
 import { getPushToken } from '../../src/lib/storage';
+
+// `ts` makes every tap a fresh request, so the target screen re-applies its filter even when the same one was used before.
+function pushFresh(router: ReturnType<typeof useRouter>, pathname: string, params: Record<string, string>) {
+  router.push({ pathname, params: { ...params, ts: String(Date.now()) } } as never);
+}
 
 const ADMIN_LEADERS_SHOWN = 5;
 // Push cannot work in Expo Go or in a browser, so do not offer it there.
@@ -116,6 +122,7 @@ export default function HomeScreen() {
   const { user } = useAuth();
   const unread = useUnread();
   const qc = useQueryClient();
+  const { t } = useLang();
   const [toast, setToast] = useState<{ message: string; visible: boolean } | null>(null);
   const [pushOn, setPushOn] = useState<boolean | null>(null);
   useEffect(() => { void getPushToken().then((t) => setPushOn(!!t)).catch(() => setPushOn(null)); }, []);
@@ -160,7 +167,7 @@ export default function HomeScreen() {
   const inboxRows = (data.shares?.inbox?.recent ?? []).filter((r) => r.status !== 'done').slice(0, 3);
 
   // `ts` makes every tap a fresh request, so the target screen re-applies its filter even if the same one was used before.
-  const go = (pathname: string, params: Record<string, string>) => router.push({ pathname, params: { ...params, ts: String(Date.now()) } } as never);
+  const go = (pathname: string, params: Record<string, string>) => pushFresh(router, pathname, params);
 
   const waitingForMe = data.shares?.inbox?.new ?? 0;
   const waitingOnLeader = data.shares?.sent?.waiting ?? 0;
@@ -182,13 +189,29 @@ export default function HomeScreen() {
   const savedCount = savedQ.data?.length;
   const board = data.board;
   const boardOpen = board ? board.todo + board.doing : 0;
-  const tiles: ShortcutTile[] = isAdmin ? [] : [
-    isStaff
-      ? { icon: 'article', label: 'Find stories', sub: (news?.today ?? 0) > 0 ? `${news?.today} today` : 'Browse the news', onPress: openNews, primary: true }
-      : { icon: 'share', label: 'Share a story', sub: 'Send one to your team', onPress: () => router.push('/share/create'), primary: true },
-    { icon: 'mail-outline', label: 'Inbox', sub: unread > 0 ? `${unread} new` : 'All clear', onPress: openInbox, badge: unread, alert: unread > 0 },
-    { icon: isStaff ? 'checklist' : 'groups', label: isStaff ? 'Team board' : 'Team', sub: !board ? 'Tasks and notes' : board.overdue > 0 ? `${board.overdue} overdue` : boardOpen > 0 ? `${boardOpen} open` : 'No open tasks', onPress: openTeam, alert: !!board && board.overdue > 0 },
-    { icon: 'bookmark-border', label: 'Saved', sub: savedCount === undefined ? 'Your reading list' : savedCount > 0 ? `${savedCount} saved` : 'Nothing saved yet', onPress: () => router.push('/saved') },
+  // Same content and order as the web: leaders get "Leader actions", staff get "Office tools".
+  const go2 = (path: string) => () => router.push(path as never);
+  const tiles: ShortcutTile[] = !isLeader ? [] : [
+    { icon: 'edit', label: t('compose.title'), sub: 'Write and schedule a post', onPress: go2('/tools/compose'), primary: true },
+    { icon: 'construction', label: t('proj.title'), sub: board ? `${boardOpen} open tasks` : 'Track development', onPress: go2('/tools/projects') },
+    { icon: 'mic', label: t('voice.button'), sub: 'Ask your office', onPress: go2('/tools/voice'), highlight: true },
+    { icon: 'lightbulb-outline', label: 'AI inbox', sub: 'Suggested next steps', onPress: go2('/tools/suggestions') },
+    { icon: 'description', label: t('btn.briefing'), sub: 'Today in one page', onPress: go2('/tools/briefing') },
+    { icon: 'sensors', label: t('btn.openFeed'), sub: (news?.today ?? 0) > 0 ? `${news?.today} today` : 'Live news', onPress: openNews },
+    { icon: 'forum', label: t('survey.results.title'), sub: 'Citizen messages', onPress: go2('/tools/survey') },
+    { icon: 'bookmark-border', label: t('m.saved'), sub: savedCount === undefined ? 'Reading list' : savedCount > 0 ? `${savedCount} saved` : 'Nothing saved yet', onPress: () => router.push('/saved') },
+  ];
+  const staffTools = !isStaff ? [] : [
+    { icon: 'sensors', label: t('nav.live'), sub: 'Review the news and send what matters', go: openNews },
+    { icon: 'notifications-active', label: t('top.alerts.title'), sub: t('top.alerts.sub'), go: go2('/tools/alerts') },
+    { icon: 'construction', label: t('proj.title'), sub: t('proj.sub'), go: go2('/tools/projects') },
+    { icon: 'edit', label: t('compose.title'), sub: 'Write, schedule, send for approval', go: go2('/tools/compose') },
+    { icon: 'fact-check', label: t('m.letters'), sub: 'Letters and petitions with approval', go: go2('/work') },
+    { icon: 'chat', label: t('wa.title'), sub: t('wa.sub'), go: go2('/tools/whatsapp') },
+    { icon: 'visibility', label: t('watch.title'), sub: t('watch.sub'), go: go2('/tools/watchlist') },
+    { icon: 'forum', label: t('survey.results.title'), sub: 'Citizen messages and the survey link', go: go2('/tools/survey') },
+    { icon: 'checklist', label: 'Team board', sub: 'Tasks, notes and the daily briefing', go: openTeam },
+    { icon: 'bookmark-border', label: t('m.saved'), sub: 'Your reading list', go: () => router.push('/saved') },
   ];
 
   return (
@@ -294,7 +317,17 @@ export default function HomeScreen() {
             </Card>
           </View>
 
-          {tiles.length > 0 ? <ShortcutGrid tiles={tiles} /> : null}
+          {isLeader ? (<><SectionTitle title={t('leader.actions.title')} /><ShortcutGrid tiles={tiles} /></>) : null}
+          {isStaff ? (
+            <>
+              <SectionTitle title={t('staff.tools')} />
+              <View style={{ marginHorizontal: space.lg }}>
+                <Card>
+                  {staffTools.map((x, i) => <Row key={x.label} title={x.label} meta={x.sub} onPress={x.go} last={i === staffTools.length - 1} />)}
+                </Card>
+              </View>
+            </>
+          ) : null}
 
           {week && (week.received + week.handled + week.sent + week.sent_done) > 0 ? (
             <View style={{ marginHorizontal: space.lg }}>
@@ -345,6 +378,19 @@ export default function HomeScreen() {
                   { icon: 'check-circle-outline', label: 'Done', value: reach.done ?? 0, color: c.ok },
                 ]}
               />
+            </>
+          ) : null}
+
+          {data.kind === 'minister' && (news?.districts ?? []).length > 0 ? (
+            <>
+              <SectionTitle title={t('leader.dist.title')} />
+              <View style={{ marginHorizontal: space.lg }}>
+                <Card>
+                  {(news?.districts ?? []).map((d, i, arr) => (
+                    <Row key={d.district} title={d.district} meta={`${d.urgent} urgent · ${d.negative} negative · ${d.total} stories`} last={i === arr.length - 1} onPress={() => go('/(tabs)/news', { district: d.district })} />
+                  ))}
+                </Card>
+              </View>
             </>
           ) : null}
 

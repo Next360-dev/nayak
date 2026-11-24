@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, Switch, Text, View, StyleSheet } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { Card } from './index';
+import { Card } from './primitives';
 import { hairline, radius, shadowCard, space, surface, useTheme } from '../theme';
 
 type IconName = React.ComponentProps<typeof MaterialIcons>['name'];

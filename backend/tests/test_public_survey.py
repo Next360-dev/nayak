@@ -42,5 +42,29 @@ def test_results_never_include_the_respondent_ip(monkeypatch):
         def cursor(self): return Cur()
         def close(self): pass
     monkeypatch.setattr(svc, "get_connection", lambda: Conn())
-    rows = svc.list_responses()
+    rows = svc.list_responses("mla_a")
     assert "ip" not in rows[0] and rows[0]["message"] == "msg" and rows[0]["name"] == "Ravi"
+
+
+def test_a_survey_needs_a_real_leader(monkeypatch):
+    users = {"mla_a": {"role": "mla"}, "staff_a": {"role": "staff"}, "boss": {"role": "admin"}}
+    monkeypatch.setattr(svc.user_repository, "find_user_by_username", lambda u: users.get(u))
+    assert svc.valid_leader(" MLA_A ") == "mla_a"                       # case and spaces are tolerated
+    for bad in ("", None, "nobody", "staff_a", "boss"):                 # unknown, staff and admin cannot own responses
+        with pytest.raises(ValueError):
+            svc.valid_leader(bad)
+
+
+def test_results_are_filtered_to_one_leader(monkeypatch):
+    seen = {}
+    class Cur:
+        def execute(self, sql, params=None): seen["sql"], seen["params"] = sql, params
+        def fetchall(self): return []
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+    class Conn:
+        def cursor(self): return Cur()
+        def close(self): pass
+    monkeypatch.setattr(svc, "get_connection", lambda: Conn())
+    svc.list_responses("mla_a")
+    assert "WHERE leader_username = %s" in seen["sql"] and seen["params"] == ("mla_a",)

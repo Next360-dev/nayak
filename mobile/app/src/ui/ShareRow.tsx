@@ -3,7 +3,7 @@ import { Pressable, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { radius, space, type, useTheme } from '../theme';
 import { relativeTime } from '../lib/time';
-import { Badge } from './index';
+import { Badge } from './primitives';
 
 export type ShareStatus = 'new' | 'seen' | 'acting' | 'done';
 export type ShareRowData = {

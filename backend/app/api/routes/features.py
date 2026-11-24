@@ -180,6 +180,7 @@ def public_survey(request: Request, payload: dict):
             payload.get("message", ""),
             payload.get("name"),
             payload.get("email"),
+            payload.get("leader"),
         )
     except ValueError as exc:
         raise HTTPException(status_code=400 if "rate" not in str(exc) else 429, detail=str(exc))
@@ -188,9 +189,10 @@ def public_survey(request: Request, payload: dict):
 
 @router.get("/api/public-survey/results")
 def survey_results(user: dict = Depends(get_current_user)):
-    if user["role"] not in ("staff", "mla", "minister", "admin"):
+    # An office sees only its own leader's responses. The master admin sees none (no access to citizens' messages).
+    if user["role"] not in ("staff", "mla", "minister"):
         raise HTTPException(status_code=403, detail="forbidden")
-    return {"status": "success", "responses": public_survey_service.list_responses()}
+    return {"status": "success", "leader": _leader_of(user), "responses": public_survey_service.list_responses(_leader_of(user))}
 
 
 # ── Leader suggestions ────────────────────────────────────────────────────

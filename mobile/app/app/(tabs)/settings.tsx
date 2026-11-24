@@ -4,6 +4,7 @@ import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import * as Notifications from 'expo-notifications';
 import { useAuth } from '../../src/hooks/useAuth';
+import { useLang } from '../../src/i18n';
 import { registerDevice, unregisterDevice } from '../../src/api/devices';
 import { fetchProfile, updateProfile, testAlert, fetchHealth, sendAppFeedback } from '../../src/api/profile';
 import { getPushToken, setPushToken as storePushToken } from '../../src/lib/storage';
@@ -17,6 +18,7 @@ export default function SettingsScreen() {
   const router = useRouter();
   const { user, signOut } = useAuth();
   const { c } = useTheme();
+  const { lang, setLang, t } = useLang();
   const [toast, setToast] = useState<{ message: string; visible: boolean } | null>(null);
   const [profile, setProfile] = useState<{ email?: string | null; phone?: string | null; alerts_enabled?: boolean | null; lang?: string | null; email_configured?: boolean | null } | null>(null);
   const [pushEnabled, setPushEnabled] = useState(false);
@@ -116,7 +118,7 @@ export default function SettingsScreen() {
             title: 'ACCOUNT',
             rows: [
               { icon: 'contact-mail', iconColor: c.text, title: 'Contact details', value: `${profile?.email ?? 'Not set'} · ${profile?.phone ?? 'Not set'}` },
-              { icon: 'translate', iconColor: c.text, title: 'Language', value: (profile?.lang === 'te' ? 'తెలుగు' : 'English') },
+              { icon: 'translate', iconColor: c.text, title: t('m.language'), value: t('m.language.value'), onPress: () => setLang(lang === 'te' ? 'en' : 'te') },
             ],
           },
           {

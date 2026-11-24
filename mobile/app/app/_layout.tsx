@@ -3,14 +3,15 @@ import { useEffect } from 'react';
 import * as Notifications from 'expo-notifications';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from '../src/hooks/useAuth';
+import { LangProvider } from '../src/i18n';
 import { StatusBar } from 'expo-status-bar';
 import { AndroidImportance } from 'expo-notifications';
 import { LinearGradient } from 'expo-linear-gradient';
 import { palette, sceneBackground, veil } from '../src/theme';
 import { Image, Platform, StyleSheet, useWindowDimensions, View } from 'react-native';
 
-// Configure notification handling
-Notifications.setNotificationHandler({
+// Configure notification handling (not on web: push cannot work in a browser and the library only logs warnings there)
+if (Platform.OS !== 'web') Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
     shouldPlaySound: true,
@@ -54,6 +55,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
         router.push(`/share/${data.share_id}`);
       }
     };
+    if (Platform.OS === 'web') return undefined;
     let cancelled = false;
     (async () => {
       try {
@@ -108,11 +110,13 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
+        <LangProvider>
         <AuthGate>
           <View style={[StyleSheet.absoluteFill, { backgroundColor: palette.light.bg }]}><Backdrop /></View>
           <StatusBar style="dark" />
           <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: sceneBackground } }} />
         </AuthGate>
+        </LangProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

@@ -8,6 +8,7 @@ from collections import defaultdict
 from datetime import datetime, timezone
 
 from app.core.database import get_connection
+from app.repositories import user_repository
 
 logger = logging.getLogger(__name__)
 
@@ -46,17 +47,27 @@ def clean_submission(role, category, message, name, email) -> tuple[str, str, st
     return role, category, message, name, email
 
 
-def submit_survey(ip: str, role: str, category: str, message: str, name: str | None, email: str | None) -> dict:
+def valid_leader(leader: str | None) -> str:
+    """The survey link names a leader. Only a real, active MLA/minister can own responses."""
+    leader = (leader or "").strip().lower()
+    user = user_repository.find_user_by_username(leader) if leader else None
+    if not user or user.get("role") not in ("mla", "minister"):
+        raise ValueError("this survey link is not valid")
+    return leader
+
+
+def submit_survey(ip: str, role: str, category: str, message: str, name: str | None, email: str | None, leader: str | None = None) -> dict:
     role, category, message, name, email = clean_submission(role, category, message, name, email)
+    leader = valid_leader(leader)
     if not _allow_ip(ip or "unknown"):
         raise ValueError("rate limit exceeded; try again later")
     conn = get_connection()
     try:
         with conn.cursor() as cur:
             cur.execute(
-                "INSERT INTO public_survey_responses (ip, role, category, message, name, email, created_at) "
-                "VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id, created_at",
-                (ip, role, category, message, name, email,
+                "INSERT INTO public_survey_responses (ip, role, category, message, name, email, leader_username, created_at) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING id, created_at",
+                (ip, role, category, message, name, email, leader,
                  datetime.now(timezone.utc)),
             )
             row = cur.fetchone()
@@ -66,13 +77,15 @@ def submit_survey(ip: str, role: str, category: str, message: str, name: str | N
         conn.close()
 
 
-def list_responses() -> list[dict]:
+def list_responses(leader: str) -> list[dict]:
+    """Only this leader's responses (the office of one MLA/minister). Never everyone's."""
     conn = get_connection()
     try:
         with conn.cursor() as cur:
             cur.execute(
                 "SELECT id, role, category, message, name, email, created_at "
-                "FROM public_survey_responses ORDER BY created_at DESC"
+                "FROM public_survey_responses WHERE leader_username = %s ORDER BY created_at DESC",
+                (leader,),
             )
             rows = cur.fetchall() or []
     finally:

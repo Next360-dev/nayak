@@ -9,23 +9,28 @@ import { PAGE_SIZE } from '../../src/constants/config';
 import { useAuth } from '../../src/hooks/useAuth';
 import { hairline, space, surface, tints, useTheme } from '../../src/theme';
 import { Card, EmptyState, ScreenHeader, StickyBar } from '../../src/ui';
-import { NewsCard, NewsSkeleton, PresetChips, ScopeItem, ScopeTabs, Segmented, Tone } from '../../src/ui/NewsParts';
+import { NewsCard, NewsSkeleton, PresetChips, ScopeItem, ScopeTabs, Tone } from '../../src/ui/NewsParts';
 import { BottomSheet } from '../../src/ui/BottomSheet';
 import { rememberStory } from '../../src/lib/storyCache';
 import { useLastVisit } from '../../src/lib/lastVisit';
+import { useLang } from '../../src/i18n';
 
 const MIX_SOCIAL_SCOPES = ['all', 'positive', 'negative'];
 const DEBOUNCE_MS = 400;
 
-export default function NewsScreen() {
+export type NewsMode = 'live' | 'social' | 'history';
+
+// One news engine, three tabs (as on the web): Live = last 24 h, Social = public posts about the leader, History = older.
+export function NewsView({ mode }: { mode: NewsMode }) {
   const qc = useQueryClient();
   const router = useRouter();
   const { user } = useAuth();
   const canShare = !!user && user.role !== 'admin';
   const { c } = useTheme();
   const since = useLastVisit();
+  const { t } = useLang();
 
-  const [scope, setScope] = useState('all');
+  const [scope, setScope] = useState(mode === 'social' ? 'social' : 'all');
   const { scope: scopeParam, ts: scopeTs } = useLocalSearchParams<{ scope?: string; ts?: string }>();
   const [appliedScope, setAppliedScope] = useState<string | undefined>();
   const scopeKey = scopeParam ? `${scopeParam}|${scopeTs ?? ''}` : undefined;
@@ -33,7 +38,7 @@ export default function NewsScreen() {
     setAppliedScope(scopeKey);
     if (['all', 'positive', 'negative', 'statewide', 'civic', 'social'].includes(scopeParam as string)) setScope(scopeParam as string);
   }
-  const [period, setPeriod] = useState('today');
+  const [period] = useState(mode === 'history' ? 'history' : 'today');
   const [dateRange, setDateRange] = useState('all');
   const [translations, setTranslations] = useState<Record<number, { h: string; s: string }>>({});
   const [refreshStatus, setRefreshStatus] = useState<any>(null);
@@ -197,7 +202,7 @@ export default function NewsScreen() {
       }
     : computedCounts;
 
-  const SCOPES: ScopeItem[] = [
+  const ALL_SCOPES: ScopeItem[] = [
     { id: 'all', label: 'All', count: Math.min(displayCounts.all, 999), icon: 'layers', color: c.text },
     { id: 'positive', label: 'Positive', count: Math.min(displayCounts.positive, 999), icon: 'trending-up', color: c.ok },
     { id: 'negative', label: 'Negative', count: Math.min(displayCounts.negative, 999), icon: 'trending-down', color: c.danger },
@@ -205,6 +210,8 @@ export default function NewsScreen() {
     { id: 'civic', label: 'Civic', count: Math.min(displayCounts.civic, 999), icon: 'account-balance', color: c.accent },
     { id: 'social', label: 'Social', count: Math.min(displayCounts.social, 999), icon: 'forum', color: tints.blue },
   ];
+
+  const SCOPES = ALL_SCOPES.filter((x) => x.id !== 'social');
 
   const toggleTranslate = async (a: Article) => {
     if (translations[a.id]) {
@@ -400,7 +407,7 @@ export default function NewsScreen() {
       </Pressable>
     </View>
   ) : (
-    <ScreenHeader title="News" subtitle={`${place} · ${note}`.trim()} actions={headerActions} />
+    <ScreenHeader title={t(mode === 'social' ? 'nav.social' : mode === 'history' ? 'nav.history' : 'nav.live')} subtitle={`${place} · ${note}`.trim()} actions={headerActions} />
   );
 
   return (
@@ -421,8 +428,7 @@ export default function NewsScreen() {
         }}
         ListHeaderComponent={
           <StickyBar>
-            <ScopeTabs items={SCOPES} value={scope} onChange={setScope} />
-            <Segmented options={[{ id: 'today', label: 'Latest' }, { id: 'history', label: 'Archive' }]} value={period} onChange={setPeriod} />
+            {mode !== 'social' ? <ScopeTabs items={SCOPES} value={scope} onChange={setScope} /> : null}
             {period === 'history' ? (
               <PresetChips
                 items={[{ id: 'all', label: 'All older' }, { id: '48h', label: '24-48h' }, { id: '3d', label: '3 days' }, { id: '7d', label: '7 days' }, { id: '14d', label: '14 days' }]}
@@ -481,4 +487,8 @@ function relativeTime(s?: string | null) {
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
   return `${Math.floor(diff / 86400)}d ago`;
+}
+
+export default function LiveScreen() {
+  return <NewsView mode="live" />;
 }

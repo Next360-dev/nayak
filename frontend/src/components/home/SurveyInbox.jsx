@@ -13,6 +13,7 @@ export default function SurveyInbox() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showAll, setShowAll] = useState(false);
+  const [leader, setLeader] = useState('');
   const labelFor = (key, fallback) => {
     const label = tr(key);
     return label === key ? fallback : label;
@@ -24,6 +25,7 @@ export default function SurveyInbox() {
     try {
       const data = await fetchSurveyResults();
       setResponses(data.responses || []);
+      setLeader(data.leader || '');
     } catch (err) {
       setError(err.message || tr('survey.results.error'));
     } finally {
@@ -36,6 +38,7 @@ export default function SurveyInbox() {
   return (
     <Section title={tr('survey.results.title')} description={tr('survey.results.desc')}
       action={!loading && !error && <div className="flex items-center gap-2"><Badge variant="secondary">{tr('survey.results.count', { n: responses.length })}</Badge>{responses.length > 5 && <Button type="button" variant="ghost" size="sm" onClick={() => setShowAll((value) => !value)}>{showAll ? tr('survey.results.less') : tr('survey.results.more')}</Button>}</div>}>
+      {leader && <p className="mb-3 break-all rounded-md bg-secondary px-3 py-2 text-xs">Public survey link: <span className="font-medium">{`${window.location.origin}/survey/${leader}`}</span></p>}
       {loading ? <p className="text-sm text-muted-foreground" role="status">{tr('common.loading')}</p>
         : error ? <div className="flex flex-wrap items-center justify-between gap-3" role="alert"><CardDescription>{error}</CardDescription><Button type="button" size="sm" variant="outline" onClick={load}>{tr('btn.retry')}</Button></div>
         : responses.length === 0 ? <Empty>{tr('survey.results.empty')}</Empty>

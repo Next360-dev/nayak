@@ -40,13 +40,17 @@ export default function TabsLayout() {
         sceneStyle: { backgroundColor: sceneBackground },
       }}
     >
+      {/* The bar shows the five tabs of the web app. Inbox, Team, Users, Sent and More stay routable (identity bar, Home sections) but are not in the bar. */}
       <Tabs.Screen name="index" options={{ title: 'Home', headerShown: false }} />
-      <Tabs.Screen name="news" options={{ title: 'News', headerShown: false, href: show(isLeader || isStaff) }} />
-      <Tabs.Screen name="inbox" options={{ title: 'Inbox', tabBarBadge: unread > 0 ? unread : undefined }} />
+      <Tabs.Screen name="news" options={{ title: 'Live', headerShown: false, href: show(isLeader || isStaff) }} />
+      <Tabs.Screen name="social" options={{ title: 'Social', headerShown: false, href: show(isLeader || isStaff) }} />
+      <Tabs.Screen name="history" options={{ title: 'History', headerShown: false, href: show(isLeader || isStaff) }} />
+      <Tabs.Screen name="portfolio" options={{ title: 'Portfolio', headerShown: false, href: show(isLeader || isStaff) }} />
+      <Tabs.Screen name="inbox" options={{ title: 'Inbox', href: null, tabBarBadge: unread > 0 ? unread : undefined }} />
       <Tabs.Screen name="sent" options={{ title: 'Sent', href: null }} />
-      <Tabs.Screen name="team" options={{ title: 'Team', href: show(isLeader || isStaff) }} />
+      <Tabs.Screen name="team" options={{ title: 'Team', href: null }} />
       <Tabs.Screen name="users" options={{ title: 'Users', headerShown: true, href: show(isAdmin) }} />
-      <Tabs.Screen name="settings" options={{ title: 'More' }} />
+      <Tabs.Screen name="settings" options={{ title: 'More', href: null }} />
     </Tabs>
   );
 }
