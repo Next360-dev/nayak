@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { ArrowUpRight, BadgeCheck, BookOpenText, Building2, Eye, FolderKanban, IdCard, LoaderCircle, Newspaper, Save } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,10 +13,22 @@ const EMPTY = {
   constituency_office: '', ministerial_office: '', official_email: '', helpline: '',
   ministry_milestones: [], constituency_projects: [],
 };
+const normalizeContent = (value = {}) => ({
+  ...EMPTY,
+  ...value,
+  ministry_milestones: Array.isArray(value.ministry_milestones) ? value.ministry_milestones : [],
+  constituency_projects: Array.isArray(value.constituency_projects) ? value.constituency_projects : [],
+});
 const TABS = [
   ['profile', 'Profile & biography'], ['ministry', 'Ministry milestones'],
   ['projects', 'Constituency projects'], ['preview', 'Public preview'], ['directory', 'Representative directory'],
 ];
+const TAB_ICONS = { profile: IdCard, ministry: BookOpenText, projects: FolderKanban, preview: Eye, directory: Newspaper };
+
+function portfolioErrorMessage(error) {
+  if (error?.message === 'Not Found') return 'The portfolio API is not available on the connected backend yet. Restart or redeploy the latest backend, then retry.';
+  return error?.message || 'Could not load the office portfolio. Please retry.';
+}
 
 function Field({ label, value, onChange, multiline = false, disabled = false, placeholder = '' }) {
   const props = { value: value || '', onChange: (e) => onChange(e.target.value), disabled, placeholder };
@@ -45,9 +58,9 @@ export default function OfficialPortfolioPage({ currentUser, reps, isLoadingReps
       const data = await fetchPortfolio();
       setLeaderName(data.leader_name || '');
       setLeaderUsername(data.leader_username || '');
-      setContent({ ...EMPTY, ...(data.content || {}), full_name: data.content?.full_name || data.leader_name || '' });
+      setContent({ ...normalizeContent(data.content), full_name: data.content?.full_name || data.leader_name || '' });
       setPublished(Boolean(data.published)); setUpdatedAt(data.updated_at || null);
-    } catch (e) { setError(e.message || 'Could not load the office portfolio.'); }
+    } catch (e) { setError(portfolioErrorMessage(e)); }
     finally { setLoading(false); }
   }, [currentUser?.politician_name, isAdmin]);
 
@@ -57,7 +70,7 @@ export default function OfficialPortfolioPage({ currentUser, reps, isLoadingReps
     e.preventDefault(); setSaving(true); setError(''); setSavedMessage('');
     try {
       const data = await savePortfolio(content);
-      setContent({ ...EMPTY, ...(data.content || content) }); setPublished(Boolean(data.published));
+      setContent(normalizeContent(data.content || content)); setPublished(Boolean(data.published));
       setUpdatedAt(data.updated_at || null); setSavedMessage('Portfolio changes published.');
     } catch (err) { setError(err.message || 'Could not publish these portfolio changes.'); }
     finally { setSaving(false); }
@@ -67,25 +80,33 @@ export default function OfficialPortfolioPage({ currentUser, reps, isLoadingReps
 
   return <main className="shadcn-scope min-h-[calc(100vh-120px)] bg-[#f5f6f8]">
     <div className="mx-auto w-full max-w-[1500px] space-y-5 px-4 py-6 md:px-8 md:py-8 lg:px-10">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div><p className="text-xs font-bold uppercase tracking-[.12em] text-orange-700">OFFICIAL PORTFOLIO</p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">{isAdmin ? 'Representative directory' : 'Portfolio management'}</h1>
-          <p className="mt-1 text-sm text-slate-600">{isAdmin ? 'Browse official representative details.' : `Manage the public profile, ministry record, and constituency work for ${leaderName || currentUser?.politician_name || 'your office'}.`}</p>
+      <header className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_4px_20px_rgba(15,23,42,.045)]">
+        <div aria-hidden="true" className="h-1 bg-[linear-gradient(90deg,#ff9933_0%,#ff9933_33.333%,#fff_33.333%,#fff_66.666%,#138808_66.666%,#138808_100%)]" />
+        <div className="flex flex-wrap items-center justify-between gap-5 p-5 md:p-7">
+          <div className="flex min-w-0 items-center gap-4">
+            {!isAdmin && <div className="grid size-14 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-orange-50 to-emerald-50 text-lg font-bold text-slate-700 ring-1 ring-slate-200">{(content.full_name || leaderName || currentUser?.politician_name || 'O').slice(0, 1)}</div>}
+            <div className="min-w-0">
+              <p className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[.14em] text-orange-700"><Building2 className="size-3.5" aria-hidden="true" />Official portfolio</p>
+              <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900 md:text-[1.75rem]">{isAdmin ? 'Representative directory' : 'Portfolio management'}</h1>
+              <p className="mt-1 max-w-2xl text-sm leading-5 text-slate-600">{isAdmin ? 'Browse verified public representative details.' : `Manage the public profile and office record for ${leaderName || currentUser?.politician_name || 'your office'}.`}</p>
+            </div>
+          </div>
+          {!isAdmin && <div className="flex flex-wrap items-center gap-2 md:justify-end">
+            {tab !== 'directory' && (published ? <Badge className="gap-1 bg-emerald-100 text-emerald-800"><BadgeCheck className="size-3.5" />Published</Badge> : <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800">Not published</Badge>)}
+            {!canEdit && <Badge variant="outline">Leader view</Badge>}
+            {canEdit && tab !== 'directory' && !loading && <Button type="button" onClick={save} disabled={saving || Boolean(error)} className="bg-[#e87916] text-white hover:bg-[#cf6410]">
+              {saving ? <><LoaderCircle className="animate-spin" />Publishing…</> : <><Save />Save & publish</>}
+            </Button>}
+            {published && leaderUsername && tab !== 'directory' && <a href={`/public/portfolio/${encodeURIComponent(leaderUsername)}`} target="_blank" rel="noreferrer" className="inline-flex h-9 items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-800 hover:bg-slate-50"><Eye className="size-4" />Public page<ArrowUpRight className="size-3.5" /></a>}
+          </div>}
         </div>
-        {tab !== 'directory' && <div className="flex items-center gap-2">{published && <Badge className="bg-emerald-100 text-emerald-800">Published</Badge>}
-          {!canEdit && !isAdmin && <Badge variant="outline">Leader view</Badge>}
-        </div>}
+        {updatedAt && tab !== 'directory' && <div className="border-t border-slate-100 bg-slate-50/70 px-5 py-2 text-xs text-slate-500 md:px-7">Last published {new Date(updatedAt).toLocaleString()}</div>}
       </header>
 
-      <nav aria-label="Portfolio pages" className="flex gap-2 overflow-x-auto rounded-xl border border-slate-200 bg-white p-2">
-        {TABS.filter(([id]) => !isAdmin || id === 'directory').map(([id, label]) => <Button key={id} type="button" size="sm" variant={tab === id ? 'default' : 'ghost'} className="shrink-0" onClick={() => setTab(id)}>{label}</Button>)}
+      <nav aria-label="Portfolio pages" className="flex gap-1 overflow-x-auto rounded-xl border border-slate-200 bg-white p-1.5 shadow-sm">
+        {TABS.filter(([id]) => !isAdmin || id === 'directory').map(([id, label]) => { const Icon = TAB_ICONS[id]; return <Button key={id} type="button" size="sm" variant={tab === id ? 'default' : 'ghost'} aria-current={tab === id ? 'page' : undefined} className={`shrink-0 gap-2 ${tab === id ? 'bg-slate-900 text-white hover:bg-slate-800' : 'text-slate-600'}`} onClick={() => setTab(id)}><Icon className="size-4" />{label}</Button>; })}
       </nav>
-      {canEdit && tab !== 'directory' && !loading && <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white p-3">
-        <Button type="button" onClick={save} disabled={saving || Boolean(error)}>{saving ? 'Publishing…' : '💾 Save & Publish Portfolio Changes'}</Button>
-        {published && leaderUsername && <a href={`/public/portfolio/${encodeURIComponent(leaderUsername)}`} target="_blank" rel="noreferrer" className="inline-flex h-9 items-center rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-800 hover:bg-slate-50">Open public page</a>}
-        {savedMessage && <p role="status" className="text-sm font-medium text-emerald-700">{savedMessage}</p>}
-        {updatedAt && <span className="text-xs text-slate-500">Last published {new Date(updatedAt).toLocaleString()}</span>}
-      </div>}
+      {savedMessage && <p role="status" className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800"><BadgeCheck className="size-4" />{savedMessage}</p>}
 
       {tab === 'directory' ? <RepresentativesDirectory reps={reps} isLoading={isLoadingReps} error={repsError} onRetry={onRetryReps} currentLang={currentLang} t={t} /> : <>
         {loading ? <Card><CardContent className="py-8 text-sm text-slate-500">Loading portfolio…</CardContent></Card> : <>
