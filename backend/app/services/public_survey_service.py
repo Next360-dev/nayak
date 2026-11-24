@@ -27,9 +27,27 @@ def _allow_ip(ip: str) -> bool:
     return True
 
 
-def submit_survey(ip: str, role: str, category: str, message: str, name: str | None, email: str | None) -> dict:
-    if not message or not message.strip():
+MAX_MESSAGE, MAX_SHORT, MAX_EMAIL = 2000, 100, 200
+
+
+def clean_submission(role, category, message, name, email) -> tuple[str, str, str, str, str]:
+    """Trim and bound every public input (anyone on the internet can post here). Raises ValueError with a plain reason."""
+    message = (message or "").strip()
+    if not message:
         raise ValueError("message is required")
+    if len(message) > MAX_MESSAGE:
+        raise ValueError(f"message is too long (max {MAX_MESSAGE} characters)")
+    role, category, name = ((v or "").strip() for v in (role, category, name))
+    email = (email or "").strip()
+    if any(len(v) > MAX_SHORT for v in (role, category, name)):
+        raise ValueError(f"role, category and name must be at most {MAX_SHORT} characters")
+    if email and (len(email) > MAX_EMAIL or "@" not in email or " " in email):
+        raise ValueError("email is not valid")
+    return role, category, message, name, email
+
+
+def submit_survey(ip: str, role: str, category: str, message: str, name: str | None, email: str | None) -> dict:
+    role, category, message, name, email = clean_submission(role, category, message, name, email)
     if not _allow_ip(ip or "unknown"):
         raise ValueError("rate limit exceeded; try again later")
     conn = get_connection()
@@ -38,7 +56,7 @@ def submit_survey(ip: str, role: str, category: str, message: str, name: str | N
             cur.execute(
                 "INSERT INTO public_survey_responses (ip, role, category, message, name, email, created_at) "
                 "VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id, created_at",
-                (ip, role or "", category or "", message.strip(), name or "", email or "",
+                (ip, role, category, message, name, email,
                  datetime.now(timezone.utc)),
             )
             row = cur.fetchone()
@@ -53,13 +71,14 @@ def list_responses() -> list[dict]:
     try:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT id, ip, role, category, message, name, email, created_at "
+                "SELECT id, role, category, message, name, email, created_at "
                 "FROM public_survey_responses ORDER BY created_at DESC"
             )
             rows = cur.fetchall() or []
     finally:
         conn.close()
+    # The respondent's IP is kept only for rate limiting; it is never returned.
     return [{
-        "id": r[0], "ip": r[1], "role": r[2], "category": r[3], "message": r[4],
-        "name": r[5], "email": r[6], "created_at": r[7].isoformat() if r[7] else None,
+        "id": r[0], "role": r[1], "category": r[2], "message": r[3],
+        "name": r[4], "email": r[5], "created_at": r[6].isoformat() if r[6] else None,
     } for r in rows]
