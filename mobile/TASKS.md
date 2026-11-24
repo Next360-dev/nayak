@@ -208,3 +208,12 @@ Execution order: U0.1 -> U0.2 -> U1.1 -> U1.2 -> U1.3 -> U2.1 -> U2.2 -> U3.1 ->
 # Track C (docs/MOBILE_PORT_SPEC.md): port the new web UX
 - [x] C0a Theme: navy #0B2545 primary, #F8FAFC bg, slate borders, saffron/green flag marks, `highlight` orange token; dark palette updated (not enabled). `Hero` is now the identity bar (tricolor strip, avatar + online dot, name, place, Inbox button). tsc + lint clean. NOT checked visually (browser extension disconnected).
 - [ ] C0b Rebuild `app/my-team.tsx` on the UI kit (still raw styles and old hex colours). Then C1 (i18n), C2 (5 tabs), C3 leader home, C4 staff home, C5 staff tools, C6 portfolio, C7 voice, C8 QA.
+- [x] C1 i18n: `scripts/sync_i18n.mjs` generates `mobile/app/src/i18n/strings.generated.ts` from the web strings (run after editing `frontend/src/i18n/strings.js`); `useLang()`; language row in More. New screens use web keys. Existing older screens (Inbox, Team, Work, Share) are not yet fully translated.
+- [x] C2 Navigation: bottom tabs Home / Live / Social / History / Portfolio (leader + staff); Inbox, Team, More reached from the identity bar and Home; admin keeps Home + Users.
+- [x] C3 Leader Home: status brief, Picked for you, Leader actions grid (compose, projects, AI voice, AI inbox, briefing, feed, survey, saved), needs attention, Districts (minister), team board.
+- [x] C4 Staff Home: status brief + Office tools list (live news, top alerts, projects, post composer, letters, WhatsApp, watchlist, survey, team board, saved).
+- [x] C5 Office tools screens in `mobile/app/app/tools/`: alerts, watchlist, compose, projects, whatsapp, suggestions, survey, briefing, voice, directory, audit. API client `src/api/office.ts`.
+- [x] C6 Portfolio tab (leader reads, staff edit + publish, public preview link).
+- [x] C7 Voice assistant (text; answers only from loaded office numbers; dictation via keyboard mic).
+- [x] A2 alert strip on Live, A3 urgent-only + district filters, A5 directory, A6 admin activity log, A7 social platform + tone filters. A4: sources list already on the Story screen.
+- [ ] Left: C0b rebuild `my-team.tsx`; translate Inbox/Team/Work/Share screens with `t()`; C8 QA on a real device (360 px, font 1.3, Telugu); not checked visually: browser extension was disconnected.

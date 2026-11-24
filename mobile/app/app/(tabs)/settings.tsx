@@ -139,6 +139,8 @@ export default function SettingsScreen() {
           {
             title: 'YOUR WORK',
             rows: [
+              { icon: 'groups', iconColor: c.text, title: 'Directory', onPress: () => router.push('/tools/directory' as never) },
+              ...(user?.role === 'admin' ? [{ icon: 'history', iconColor: c.text, title: 'Activity log', onPress: () => router.push('/tools/audit' as never) }] : []),
               ...(user?.role === 'admin' ? [] : [{ icon: 'bookmark', iconColor: c.text, title: 'Saved stories', onPress: () => router.push('/saved') }]),
               ...(user?.role === 'admin' ? [] : [{ icon: 'send', iconColor: c.text, title: 'Sent shares', onPress: () => router.push('/(tabs)/sent') }]),
               ...(user?.role !== 'admin' ? [{ icon: 'description', iconColor: c.text, title: 'Letters & petitions', onPress: () => router.push('/work') }] : []),

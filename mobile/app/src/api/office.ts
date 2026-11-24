@@ -44,3 +44,8 @@ export interface PortfolioContent {
 export interface PortfolioResponse { leader_username: string; leader_name?: string | null; content: Partial<PortfolioContent>; published: boolean; updated_by?: string | null; updated_at?: string | null }
 export const fetchPortfolio = () => apiFetch<PortfolioResponse>('/api/portfolio');
 export const savePortfolio = (c: PortfolioContent) => apiFetch('/api/portfolio', { method: 'PUT', body: JSON.stringify(c) });
+
+export interface Representative { name: string; party?: string | null; role_type?: string | null; constituency_name?: string | null; district_name?: string | null; contact_phone?: string | null; email?: string | null }
+export interface AuditEntry { id: number; at: string; actor: string; action: string; target?: string | null; detail?: string | null }
+export const fetchRepresentatives = async () => (await apiFetch<{ representatives: Representative[] }>('/api/representatives')).representatives ?? [];
+export const fetchAudit = async (q: string) => (await apiFetch<{ entries: AuditEntry[] }>(`/api/audit?limit=100${q ? `&q=${encodeURIComponent(q)}` : ''}`)).entries ?? [];

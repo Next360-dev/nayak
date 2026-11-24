@@ -8,7 +8,7 @@ import { Article } from '../../src/types';
 import { PAGE_SIZE } from '../../src/constants/config';
 import { useAuth } from '../../src/hooks/useAuth';
 import { hairline, space, surface, tints, useTheme } from '../../src/theme';
-import { Card, EmptyState, ScreenHeader, StickyBar } from '../../src/ui';
+import { AlertStrip, Card, EmptyState, FilterChips, ScreenHeader, StickyBar } from '../../src/ui';
 import { NewsCard, NewsSkeleton, PresetChips, ScopeItem, ScopeTabs, Tone } from '../../src/ui/NewsParts';
 import { BottomSheet } from '../../src/ui/BottomSheet';
 import { rememberStory } from '../../src/lib/storyCache';
@@ -31,12 +31,15 @@ export function NewsView({ mode }: { mode: NewsMode }) {
   const { t } = useLang();
 
   const [scope, setScope] = useState(mode === 'social' ? 'social' : 'all');
-  const { scope: scopeParam, ts: scopeTs } = useLocalSearchParams<{ scope?: string; ts?: string }>();
+  const { scope: scopeParam, district: districtParam, ts: scopeTs } = useLocalSearchParams<{ scope?: string; district?: string; ts?: string }>();
+  const [district, setDistrict] = useState<string | null>(null);
+  const [urgentOnly, setUrgentOnly] = useState(false);
   const [appliedScope, setAppliedScope] = useState<string | undefined>();
-  const scopeKey = scopeParam ? `${scopeParam}|${scopeTs ?? ''}` : undefined;
+  const scopeKey = scopeParam || districtParam ? `${scopeParam ?? ''}|${districtParam ?? ''}|${scopeTs ?? ''}` : undefined;
   if (scopeKey && scopeKey !== appliedScope) {
     setAppliedScope(scopeKey);
     if (['all', 'positive', 'negative', 'statewide', 'civic', 'social'].includes(scopeParam as string)) setScope(scopeParam as string);
+    if (districtParam) setDistrict(districtParam);
   }
   const [period] = useState(mode === 'history' ? 'history' : 'today');
   const [dateRange, setDateRange] = useState('all');
@@ -128,7 +131,7 @@ export function NewsView({ mode }: { mode: NewsMode }) {
     });
   }, [categorizedArticles]);
 
-  const filteredArticles = useMemo(() => {
+  const scopedArticles = useMemo(() => {
     if (scope === 'positive') {
       const pos = sortedArticles.filter((a) => a.sentiment === 'positive');
       return pos.length > 0 ? pos : sortedArticles;
@@ -146,6 +149,12 @@ export function NewsView({ mode }: { mode: NewsMode }) {
     }
     return sortedArticles;
   }, [sortedArticles, scope]);
+
+  // Extra filters (web: SidebarFilters): urgent only, one district. Applied to what is loaded.
+  const filteredArticles = useMemo(
+    () => scopedArticles.filter((a) => (!urgentOnly || a.priority_score === 1) && (!district || a.district_name === district)),
+    [scopedArticles, urgentOnly, district],
+  );
 
   const mixedItems = useMemo(() => {
     if (!shouldMixSocial) return null;
@@ -173,7 +182,9 @@ export function NewsView({ mode }: { mode: NewsMode }) {
   });
   const socialUpdating = scope === 'social' && !!socialFeed?.refreshing;
 
-  const socialPosts = (scope === 'social') ? (socialFeed?.posts || []) : [];
+  const [platform, setPlatform] = useState('all');
+  const [tone, setTone] = useState('all');
+  const socialPosts = (scope === 'social' ? (socialFeed?.posts || []) : []).filter((p: any) => (platform === 'all' || p.platform === platform) && (tone === 'all' || p.sentiment === tone));
 
   const computedCounts = useMemo(() => {
     let positive = 0, negative = 0, statewide = 0, civic = 0;
@@ -413,6 +424,7 @@ export function NewsView({ mode }: { mode: NewsMode }) {
   return (
     <View style={{ flex: 1, backgroundColor: surface }}>
       {header}
+      {mode === 'live' ? <AlertStrip /> : null}
       <FlatList
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: space.xl }}
@@ -428,7 +440,20 @@ export function NewsView({ mode }: { mode: NewsMode }) {
         }}
         ListHeaderComponent={
           <StickyBar>
+            {mode === 'social' ? (
+              <>
+                <FilterChips options={[{ key: 'all', label: 'All' }, { key: 'youtube', label: 'YouTube' }, { key: 'facebook', label: 'Facebook' }, { key: 'instagram', label: 'Instagram' }, { key: 'twitter', label: 'X' }]} value={platform} onChange={setPlatform} />
+                <FilterChips options={[{ key: 'all', label: 'Any tone' }, { key: 'positive', label: 'Positive' }, { key: 'negative', label: 'Negative' }, { key: 'neutral', label: 'Neutral' }]} value={tone} onChange={setTone} />
+              </>
+            ) : null}
             {mode !== 'social' ? <ScopeTabs items={SCOPES} value={scope} onChange={setScope} /> : null}
+            {mode !== 'social' ? (
+              <FilterChips
+                options={[{ key: 'urgent', label: 'Urgent only' }, ...(district ? [{ key: 'district', label: `${district}  ✕` }] : [])]}
+                value={urgentOnly ? 'urgent' : ''}
+                onChange={(k) => { if (k === 'urgent') setUrgentOnly(!urgentOnly); else setDistrict(null); }}
+              />
+            ) : null}
             {period === 'history' ? (
               <PresetChips
                 items={[{ id: 'all', label: 'All older' }, { id: '48h', label: '24-48h' }, { id: '3d', label: '3 days' }, { id: '7d', label: '7 days' }, { id: '14d', label: '14 days' }]}

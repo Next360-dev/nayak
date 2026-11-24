@@ -11,3 +11,4 @@ export { Toast } from './Toast';
 export { ShareRow } from './ShareRow';
 export { AuthShell } from './AuthShell';
 export { ToolPage } from './ToolPage';
+export { AlertStrip } from './AlertStrip';
