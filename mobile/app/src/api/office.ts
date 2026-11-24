@@ -41,7 +41,7 @@ export interface PortfolioContent {
   ministry_milestones: { title: string; date?: string | null; description: string }[];
   constituency_projects: { title: string; status: string; location: string; description: string }[];
 }
-export interface PortfolioResponse { leader_username: string; leader_name?: string | null; content: Partial<PortfolioContent>; published: boolean; updated_by?: string | null; updated_at?: string | null }
+export interface PortfolioResponse { leader_username: string; leader_name?: string | null; leader_title?: string | null; leader_party?: string | null; constituency_name?: string | null; district_name?: string | null; content: Partial<PortfolioContent>; published: boolean; updated_by?: string | null; updated_at?: string | null }
 export const fetchPortfolio = () => apiFetch<PortfolioResponse>('/api/portfolio');
 export const savePortfolio = (c: PortfolioContent) => apiFetch('/api/portfolio', { method: 'PUT', body: JSON.stringify(c) });
 

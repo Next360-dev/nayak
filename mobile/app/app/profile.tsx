@@ -1,16 +1,14 @@
 import React, { useState } from 'react';
-import { Pressable, Switch, Text, View } from 'react-native';
+import { Linking, Pressable, Switch, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchProfile, Profile, updateProfile } from '../src/api/profile';
-import { fetchDashboard } from '../src/api/dashboard';
+import { fetchPortfolio } from '../src/api/office';
 import { useAuth } from '../src/hooks/useAuth';
 import { getPushToken } from '../src/lib/storage';
 import { useLang } from '../src/i18n';
-import { Badge, Button, Card, ConfirmButton, Row, SectionHeader, TextField, Toast, ToolPage } from '../src/ui';
+import { Badge, Button, Card, ConfirmButton, Portrait, Row, SectionHeader, TextField, Toast, ToolPage } from '../src/ui';
 import { radius, space, type, useTheme } from '../src/theme';
-
-const ROLE_LABEL: Record<string, string> = { admin: 'Master admin', mla: 'MLA', minister: 'Minister', staff: 'Office staff' };
 
 // Contact editor is mounted only after the profile has loaded, so the boxes start from the saved values.
 function ContactEditor({ initial, onToast }: { initial: Profile; onToast: (m: string) => void }) {
@@ -49,13 +47,20 @@ export default function ProfileScreen() {
   const { t, lang, setLang } = useLang();
   const { user, signOut } = useAuth();
   const profile = useQuery({ queryKey: ['profile'], queryFn: fetchProfile });
-  const dash = useQuery({ queryKey: ['dashboard'], queryFn: fetchDashboard, enabled: user?.role === 'staff' });
+  const pf = useQuery({ queryKey: ['portfolio'], queryFn: fetchPortfolio, enabled: user?.role !== 'admin' });
   const [toast, setToast] = useState<string | null>(null);
   const [leaving, setLeaving] = useState(false);
-  const name = user?.politician_name || user?.username || '';
-  const initials = name.replace(/^dr\.?\s+/i, '').split(/[\s_]+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join('') || '?';
-  const role = user?.role === 'mla' || user?.role === 'minister' ? (user.leader_title || ROLE_LABEL[user.role]) : ROLE_LABEL[user?.role ?? ''] ?? '';
-  const place = [user?.constituency_name && user.constituency_name !== 'All' ? user.constituency_name : '', user?.district_name && user.district_name !== 'All' ? user.district_name : ''].filter(Boolean).join(' · ');
+  // Whose profile this is: the leader's. A staff member sees their LEADER here (their own login details are under "Account").
+  const isStaff = user?.role === 'staff';
+  const d = pf.data;
+  const about = d?.content ?? {};
+  const name = about.full_name || d?.leader_name || (isStaff ? '' : user?.politician_name) || user?.username || '';
+  const title = (lang === 'te' ? about.title_te : about.title_en) || about.title_en || d?.leader_title || '';
+  const party = d?.leader_party || (isStaff ? '' : user?.leader_party) || '';
+  const bio = (lang === 'te' ? about.biography_te : about.biography_en) || about.biography_en || about.biography_te || '';
+  const showPlace = (v?: string | null) => (v && v !== 'All' ? v : '');
+  const place = [showPlace(d?.constituency_name ?? user?.constituency_name), showPlace(d?.district_name ?? user?.district_name)].filter(Boolean).join(' · ');
+  const hasOffice = !!(about.constituency_office || about.ministerial_office || about.official_email || about.helpline);
 
   // Sign out: drop this phone's push registration first, then end the session, then the gate sends you to the login screen.
   const logout = async () => {
@@ -68,17 +73,38 @@ export default function ProfileScreen() {
   return (
     <ToolPage title={t('m.profile')} refreshing={profile.isRefetching} onRefresh={() => { void profile.refetch(); }}>
       <Card style={{ padding: space.lg, alignItems: 'center', gap: space.sm }}>
-        <View style={{ width: 88, height: 88, borderRadius: radius.pill, backgroundColor: c.accent, alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={{ color: c.onAccent, fontSize: 32, fontWeight: '700' }}>{initials}</Text>
-        </View>
+        <Portrait photoUrl={about.avatar_url} name={name} size={96} />
         <Text style={[type.title, { color: c.text, textAlign: 'center' }]}>{name}</Text>
         <View style={{ flexDirection: 'row', gap: space.sm, flexWrap: 'wrap', justifyContent: 'center' }}>
-          {role ? <Badge label={role} tone="neutral" /> : null}
-          {user?.leader_party ? <Badge label={user.leader_party} tone="neutral" /> : null}
+          {title ? <Badge label={title} tone="neutral" /> : null}
+          {party ? <Badge label={party} tone="neutral" /> : null}
+          {isStaff ? <Badge label="Your leader" tone="neutral" /> : null}
         </View>
         {place ? <Text style={[type.caption, { color: c.muted }]}>{place}</Text> : null}
-        {user?.role === 'staff' && dash.data?.leader ? <Text style={[type.caption, { color: c.muted }]}>Working for {dash.data.leader.name}</Text> : null}
-        <Text style={[type.caption, { color: c.muted }]}>@{user?.username}</Text>
+      </Card>
+
+      {bio ? (<><SectionHeader title="About" /><Card style={{ padding: space.lg }}><Text selectable style={[type.reading, { color: c.text }]}>{bio}</Text></Card></>) : null}
+
+      {hasOffice ? (
+        <>
+          <SectionHeader title="Office" />
+          <Card>
+            {about.constituency_office ? <Row title="Constituency office" meta={about.constituency_office} /> : null}
+            {about.ministerial_office ? <Row title="Ministerial office" meta={about.ministerial_office} /> : null}
+            {about.official_email ? <Row title="Email" meta={about.official_email} onPress={() => { void Linking.openURL(`mailto:${about.official_email}`).catch(() => {}); }} /> : null}
+            {about.helpline ? <Row title="Helpline" meta={about.helpline} last onPress={() => { void Linking.openURL(`tel:${about.helpline}`).catch(() => {}); }} /> : null}
+          </Card>
+        </>
+      ) : !bio ? (
+        <Card style={{ padding: space.lg, gap: space.sm }}>
+          <Text style={[type.body, { color: c.muted }]}>No biography or office details have been added yet.</Text>
+          {isStaff ? <Button label="Add details in Portfolio" variant="secondary" onPress={() => router.push('/(tabs)/portfolio' as never)} /> : null}
+        </Card>
+      ) : null}
+
+      <SectionHeader title="Account" />
+      <Card>
+        <Row title={user?.username ?? ''} meta={isStaff ? 'Office staff' : 'Signed in as'} />
       </Card>
 
       <SectionHeader title={t('m.contact')} />
@@ -94,7 +120,6 @@ export default function ProfileScreen() {
         ))}
       </View>
 
-      <SectionHeader title="Account" />
       <Card>
         <Row title={t('m.password')} meta="Other devices are signed out when you change it" onPress={() => router.push('/change-password')} />
         <Row title={t('m.more')} meta="Notifications, feedback, version" onPress={() => router.push('/(tabs)/settings' as never)} last />

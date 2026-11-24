@@ -13,3 +13,4 @@ export { AuthShell } from './AuthShell';
 export { ToolPage } from './ToolPage';
 export { AlertStrip } from './AlertStrip';
 export { ConfirmButton } from './ConfirmButton';
+export { Portrait } from './Portrait';

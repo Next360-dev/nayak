@@ -227,7 +227,7 @@ export default function HomeScreen() {
       showsVerticalScrollIndicator={false}
       refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => { void refetch(); }} tintColor={c.accent} />}
     >
-      <Hero eyebrow={eyebrow} place={place} name={person} photoUrl={photoUrl} unread={unread} onBell={openInbox} onAvatar={() => router.push('/profile')} />
+      <Hero eyebrow={eyebrow} place={place} name={person} photoUrl={photoUrl} signedInAs={isStaff ? user?.username : undefined} unread={unread} onBell={openInbox} onAvatar={() => router.push('/profile')} />
 
       <View style={{ height: space.lg }} />
 

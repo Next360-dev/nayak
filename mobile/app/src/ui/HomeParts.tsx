@@ -1,9 +1,10 @@
 import React from 'react';
-import { Image, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { flag, highlight, radius, space, surface, useTheme, white } from '../theme';
 import { Badge, Monogram } from './primitives';
+import { Portrait } from './Portrait';
 
 type Icon = React.ComponentProps<typeof MaterialIcons>['name'];
 
@@ -59,12 +60,10 @@ export function BrandBar({ name, unread, onBell, onAvatar }: { name: string; unr
 // Identity bar (matches the web LeaderIdentityBar): tricolor strip, avatar with an online dot, who and where,
 // and the Inbox / Account buttons. No stock photo of a leader on purpose.
 export function Hero({
-  eyebrow, place, name, unread, onBell, onAvatar, photoUrl,
-}: { eyebrow: string; place: string; name: string; unread: number; onBell: () => void; onAvatar: () => void; photoUrl?: string | null }) {
-  const [photoFailed, setPhotoFailed] = React.useState(false);
+  eyebrow, place, name, unread, onBell, onAvatar, photoUrl, signedInAs,
+}: { eyebrow: string; place: string; name: string; unread: number; onBell: () => void; onAvatar: () => void; photoUrl?: string | null; signedInAs?: string }) {
   const insets = useSafeAreaInsets();
   const { c } = useTheme();
-  const initials = name.replace(/^dr\.?\s+/i, '').split(/[\s_]+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join('') || '?';
   return (
     <View>
       <View style={{ flexDirection: 'row', height: 4, marginTop: insets.top }} accessibilityElementsHidden>
@@ -74,26 +73,14 @@ export function Hero({
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: space.lg, paddingTop: space.lg, paddingBottom: space.sm }}>
         <Pressable onPress={onAvatar} accessibilityRole="button" accessibilityLabel="Account and settings">
-          {photoUrl && !photoFailed ? (
-            <Image
-              source={{ uri: photoUrl }}
-              onError={() => setPhotoFailed(true)}
-              accessibilityLabel={`${name} portrait`}
-              accessibilityIgnoresInvertColors
-              resizeMode="cover"
-              style={[{ width: 56, height: 56, borderRadius: radius.pill, backgroundColor: c.surface, borderWidth: 2, borderColor: flag.saffron }, { objectPosition: '50% 18%' } as object]}
-            />
-          ) : (
-            <View accessibilityLabel={`${name} initials`} style={{ width: 56, height: 56, borderRadius: radius.pill, backgroundColor: c.accent, alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ color: c.onAccent, fontSize: 20, fontWeight: '700' }}>{initials}</Text>
-            </View>
-          )}
+          <Portrait photoUrl={photoUrl} name={name} size={56} />
           <View style={{ position: 'absolute', right: 0, bottom: 0, width: 14, height: 14, borderRadius: radius.dot, backgroundColor: c.ok, borderWidth: 2, borderColor: c.bg }} />
         </Pressable>
         <View style={{ flex: 1 }}>
           <Text style={{ color: c.accentText, fontSize: 11, letterSpacing: 2, fontWeight: '700' }} numberOfLines={1}>{eyebrow}</Text>
           <Text style={{ color: c.text, fontSize: 20, fontWeight: '700', letterSpacing: -0.3 }} numberOfLines={1}>{name}</Text>
           <Text style={{ color: c.muted, fontSize: 13 }} numberOfLines={1}>{place}</Text>
+          {signedInAs ? <Text style={{ color: c.accentText, fontSize: 12, fontWeight: '600' }} numberOfLines={1}>Signed in as {signedInAs}</Text> : null}
         </View>
         <HeaderButton icon="notifications-none" label={unread > 0 ? `Inbox, ${unread} unread` : 'Inbox'} onPress={onBell} dot={unread > 0} />
       </View>
