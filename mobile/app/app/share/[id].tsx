@@ -9,7 +9,7 @@ import { Button, EmptyState, ScreenHeader, TextField, Toast } from '../../src/ui
 import { Segmented } from '../../src/ui/NewsParts';
 import { TextLink } from '../../src/ui/HomeParts';
 import { relativeTime } from '../../src/lib/time';
-import { hairline, radius, shadowCard, space, surface, useTheme } from '../../src/theme';
+import { palette, hairline, radius, shadowCard, space, surface, useTheme } from '../../src/theme';
 
 const STATUS_LABELS: Record<string, string> = { new: 'New', seen: 'Seen', acting: 'Acting', done: 'Done' };
 
@@ -94,7 +94,7 @@ export default function ShareDetailScreen() {
             </View>
           ) : null}
           {share.note ? (
-            <View style={[styles.block, { backgroundColor: '#F2EEE6', borderRadius: radius.row, padding: space.sm }]}>
+            <View style={[styles.block, { backgroundColor: palette.light.surface, borderRadius: radius.row, padding: space.sm }]}>
               <Text style={styles.label}>Note</Text>
               <Text style={styles.body}>{share.note}</Text>
             </View>
@@ -108,7 +108,7 @@ export default function ShareDetailScreen() {
         <Text style={styles.section}>Replies</Text>
         {(replies || []).map((r) => (
           <View key={r.id} style={[styles.bubble, { backgroundColor: mine(r) ? '#F6E8CF' : surface, alignSelf: mine(r) ? 'flex-end' : 'flex-start' }]}>
-            <Text style={[styles.bubbleText, { color: mine(r) ? '#171717' : c.text }]}>{r.body}</Text>
+            <Text style={[styles.bubbleText, { color: mine(r) ? palette.light.text : c.text }]}>{r.body}</Text>
             <Text style={[styles.caption, { color: c.muted }]}>{mine(r) ? 'You' : r.sender} · {relativeTime(r.created_at)}</Text>
           </View>
         ))}
@@ -135,12 +135,12 @@ export default function ShareDetailScreen() {
 
 const styles = {
   card: { marginHorizontal: space.lg, marginTop: space.sm, padding: space.lg, borderRadius: radius.card, borderWidth: 1, borderColor: hairline, backgroundColor: surface },
-  title: { fontSize: 17, fontWeight: '700' as const, color: '#171717', marginBottom: 6 },
-  meta: { fontSize: 13, color: '#6B6B6B', marginBottom: 12 },
+  title: { fontSize: 17, fontWeight: '700' as const, color: palette.light.text, marginBottom: 6 },
+  meta: { fontSize: 13, color: palette.light.muted, marginBottom: 12 },
   block: { marginBottom: 10 },
-  label: { fontSize: 12, fontWeight: '700' as const, color: '#6B6B6B', marginBottom: 4 },
-  body: { fontSize: 15, color: '#171717', lineHeight: 22 },
-  section: { fontSize: 15, fontWeight: '700' as const, color: '#171717', marginTop: space.xl, marginBottom: space.sm, marginHorizontal: space.lg },
+  label: { fontSize: 12, fontWeight: '700' as const, color: palette.light.muted, marginBottom: 4 },
+  body: { fontSize: 15, color: palette.light.text, lineHeight: 22 },
+  section: { fontSize: 15, fontWeight: '700' as const, color: palette.light.text, marginTop: space.xl, marginBottom: space.sm, marginHorizontal: space.lg },
   bubble: { maxWidth: '85%', paddingHorizontal: space.sm, paddingVertical: 8, borderRadius: radius.summary, marginVertical: 4 },
   bubbleText: { fontSize: 14 },
   caption: { fontSize: 11 },

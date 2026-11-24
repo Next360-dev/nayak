@@ -56,26 +56,34 @@ export function BrandBar({ name, unread, onBell, onAvatar }: { name: string; unr
   );
 }
 
-// Brand row, then who and where, straight on the shared background. No stock photo of a leader on purpose.
+// Identity bar (matches the web LeaderIdentityBar): tricolor strip, avatar with an online dot, who and where,
+// and the Inbox / Account buttons. No stock photo of a leader on purpose.
 export function Hero({
   eyebrow, place, name, unread, onBell, onAvatar,
 }: { eyebrow: string; place: string; name: string; unread: number; onBell: () => void; onAvatar: () => void }) {
   const insets = useSafeAreaInsets();
   const { c } = useTheme();
+  const initials = name.replace(/^dr\.?\s+/i, '').split(/[\s_]+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join('') || '?';
   return (
-    <View style={{ paddingTop: insets.top + space.md, paddingHorizontal: space.lg, paddingBottom: space.sm }}>
-      <BrandBar name={name} unread={unread} onBell={onBell} onAvatar={onAvatar} />
-
-      <View style={{ flexDirection: 'row', gap: space.md, marginTop: space.xl }}>
-        <View style={{ width: 3, borderRadius: radius.line, backgroundColor: c.accent }} />
+    <View>
+      <View style={{ flexDirection: 'row', height: 4, marginTop: insets.top }} accessibilityElementsHidden>
+        <View style={{ flex: 1, backgroundColor: flag.saffron }} />
+        <View style={{ flex: 1, backgroundColor: white, borderTopWidth: 1, borderBottomWidth: 1, borderColor: c.border }} />
+        <View style={{ flex: 1, backgroundColor: flag.green }} />
+      </View>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: space.lg, paddingTop: space.lg, paddingBottom: space.sm }}>
+        <Pressable onPress={onAvatar} accessibilityRole="button" accessibilityLabel="Account and settings">
+          <View accessibilityLabel={`${name} initials`} style={{ width: 56, height: 56, borderRadius: radius.pill, backgroundColor: c.accent, alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ color: c.onAccent, fontSize: 20, fontWeight: '700' }}>{initials}</Text>
+          </View>
+          <View style={{ position: 'absolute', right: 0, bottom: 0, width: 14, height: 14, borderRadius: radius.dot, backgroundColor: c.ok, borderWidth: 2, borderColor: c.bg }} />
+        </Pressable>
         <View style={{ flex: 1 }}>
-          <Text style={{ color: c.accentText, fontSize: 12, letterSpacing: 3, fontWeight: '700' }}>{eyebrow}</Text>
-          <Text style={{ color: c.text, fontSize: 40, fontWeight: '700', letterSpacing: -0.6, marginTop: 2 }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
-            {place}
-          </Text>
-          <Text style={{ color: c.muted, fontSize: 14, marginTop: space.sm }}>Signed in as</Text>
-          <Text style={{ color: c.text, fontSize: 18, fontWeight: '600' }} numberOfLines={1}>{name}</Text>
+          <Text style={{ color: c.accentText, fontSize: 11, letterSpacing: 2, fontWeight: '700' }} numberOfLines={1}>{eyebrow}</Text>
+          <Text style={{ color: c.text, fontSize: 20, fontWeight: '700', letterSpacing: -0.3 }} numberOfLines={1}>{name}</Text>
+          <Text style={{ color: c.muted, fontSize: 13 }} numberOfLines={1}>{place}</Text>
         </View>
+        <HeaderButton icon="notifications-none" label={unread > 0 ? `Inbox, ${unread} unread` : 'Inbox'} onPress={onBell} dot={unread > 0} />
       </View>
     </View>
   );
@@ -238,7 +246,7 @@ export function ShortcutGrid({ tiles }: { tiles: ShortcutTile[] }) {
             })}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <View style={{ width: 40, height: 40, borderRadius: radius.tile, backgroundColor: t.primary ? 'rgba(23,23,23,0.12)' : c.accentBg, alignItems: 'center', justifyContent: 'center' }}>
+              <View style={{ width: 40, height: 40, borderRadius: radius.tile, backgroundColor: t.primary ? 'rgba(255,255,255,0.18)' : c.accentBg, alignItems: 'center', justifyContent: 'center' }}>
                 <MaterialIcons name={t.icon} size={22} color={t.primary ? c.onAccent : c.accentText} />
                 {t.badge ? (
                   <View style={{ position: 'absolute', top: -6, right: -6, minWidth: 18, height: 18, borderRadius: radius.badge, backgroundColor: c.danger, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 }}>
