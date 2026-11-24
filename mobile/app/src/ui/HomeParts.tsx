@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Image, Pressable, Text, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { flag, highlight, radius, space, surface, useTheme, white } from '../theme';
@@ -59,8 +59,9 @@ export function BrandBar({ name, unread, onBell, onAvatar }: { name: string; unr
 // Identity bar (matches the web LeaderIdentityBar): tricolor strip, avatar with an online dot, who and where,
 // and the Inbox / Account buttons. No stock photo of a leader on purpose.
 export function Hero({
-  eyebrow, place, name, unread, onBell, onAvatar,
-}: { eyebrow: string; place: string; name: string; unread: number; onBell: () => void; onAvatar: () => void }) {
+  eyebrow, place, name, unread, onBell, onAvatar, photoUrl,
+}: { eyebrow: string; place: string; name: string; unread: number; onBell: () => void; onAvatar: () => void; photoUrl?: string | null }) {
+  const [photoFailed, setPhotoFailed] = React.useState(false);
   const insets = useSafeAreaInsets();
   const { c } = useTheme();
   const initials = name.replace(/^dr\.?\s+/i, '').split(/[\s_]+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join('') || '?';
@@ -73,9 +74,20 @@ export function Hero({
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: space.lg, paddingTop: space.lg, paddingBottom: space.sm }}>
         <Pressable onPress={onAvatar} accessibilityRole="button" accessibilityLabel="Account and settings">
-          <View accessibilityLabel={`${name} initials`} style={{ width: 56, height: 56, borderRadius: radius.pill, backgroundColor: c.accent, alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ color: c.onAccent, fontSize: 20, fontWeight: '700' }}>{initials}</Text>
-          </View>
+          {photoUrl && !photoFailed ? (
+            <Image
+              source={{ uri: photoUrl }}
+              onError={() => setPhotoFailed(true)}
+              accessibilityLabel={`${name} portrait`}
+              accessibilityIgnoresInvertColors
+              resizeMode="cover"
+              style={[{ width: 56, height: 56, borderRadius: radius.pill, backgroundColor: c.surface, borderWidth: 2, borderColor: flag.saffron }, { objectPosition: '50% 18%' } as object]}
+            />
+          ) : (
+            <View accessibilityLabel={`${name} initials`} style={{ width: 56, height: 56, borderRadius: radius.pill, backgroundColor: c.accent, alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ color: c.onAccent, fontSize: 20, fontWeight: '700' }}>{initials}</Text>
+            </View>
+          )}
           <View style={{ position: 'absolute', right: 0, bottom: 0, width: 14, height: 14, borderRadius: radius.dot, backgroundColor: c.ok, borderWidth: 2, borderColor: c.bg }} />
         </Pressable>
         <View style={{ flex: 1 }}>

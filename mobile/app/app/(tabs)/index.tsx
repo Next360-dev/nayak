@@ -11,6 +11,7 @@ import { Badge, Card, EmptyState, ErrorState, HomeSkeleton, Pill, Row, SectionHe
 import { updateStatus } from '../../src/api/shares';
 import { Hero, NewsItem, ReachCard, SectionTitle, ShortcutGrid, ShortcutTile, StatusBrief, TextLink } from '../../src/ui/HomeParts';
 import { fetchSaved } from '../../src/api/saved';
+import { fetchPortfolio } from '../../src/api/office';
 import { useLang } from '../../src/i18n';
 import { apiFetch } from '../../src/api/client';
 import { relativeTime } from '../../src/lib/time';
@@ -126,6 +127,7 @@ export default function HomeScreen() {
   const [toast, setToast] = useState<{ message: string; visible: boolean } | null>(null);
   const [pushOn, setPushOn] = useState<boolean | null>(null);
   useEffect(() => { void getPushToken().then((t) => setPushOn(!!t)).catch(() => setPushOn(null)); }, []);
+  const portfolioQ = useQuery({ queryKey: ['portfolio'], queryFn: fetchPortfolio, enabled: !!user && user.role !== 'admin' });
   const savedQ = useQuery({ queryKey: ['saved'], queryFn: fetchSaved, enabled: !!user && user.role !== 'admin' });
   const answer = useMutation({
     mutationFn: ({ id, to }: { id: number; to: string }) => updateStatus(id, to),
@@ -157,8 +159,11 @@ export default function HomeScreen() {
   const isStaff = data.kind === 'staff';
   const isLeader = data.kind === 'mla' || data.kind === 'minister';
   const eyebrow = isAdmin ? 'CONTROL ROOM' : isStaff ? 'WORKING FOR' : data.kind === 'minister' ? 'MY RESPONSIBILITY' : 'MY CONSTITUENCY';
-  const place = isStaff ? (data.leader?.name || data.scope?.label || 'Team') : data.scope?.label || 'Telangana';
-  const person = isStaff ? (user?.username || name) : name;
+  // Same as the web identity bar: staff see THEIR LEADER here (name, photo, place); their own login is on the Profile page.
+  const leaderName = portfolioQ.data?.content?.full_name || portfolioQ.data?.leader_name || data.leader?.name || '';
+  const place = data.scope?.label || 'Telangana';
+  const person = isStaff ? (leaderName || user?.username || name) : (portfolioQ.data?.content?.full_name || name);
+  const photoUrl = portfolioQ.data?.content?.avatar_url || null;
 
   const news = data.news;
   const stories = news?.attention || [];
@@ -222,7 +227,7 @@ export default function HomeScreen() {
       showsVerticalScrollIndicator={false}
       refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => { void refetch(); }} tintColor={c.accent} />}
     >
-      <Hero eyebrow={eyebrow} place={place} name={person} unread={unread} onBell={openInbox} onAvatar={() => router.push('/profile')} />
+      <Hero eyebrow={eyebrow} place={place} name={person} photoUrl={photoUrl} unread={unread} onBell={openInbox} onAvatar={() => router.push('/profile')} />
 
       <View style={{ height: space.lg }} />
 

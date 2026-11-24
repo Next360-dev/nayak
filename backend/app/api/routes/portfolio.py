@@ -55,6 +55,11 @@ def get_portfolio(user: dict = Depends(get_current_user)):
     leader_user = user_repository.find_user_by_username(leader)
     return {"status": "success", "leader_username": leader,
             "leader_name": leader_user.get("politician_name") if leader_user else None,
+            # Identity details of the LEADER, so a staff member's screen shows their leader's party/place, not their own.
+            "leader_title": leader_user.get("leader_title") if leader_user else None,
+            "leader_party": leader_user.get("leader_party") if leader_user else None,
+            "constituency_name": leader_user.get("constituency_name") if leader_user else None,
+            "district_name": leader_user.get("district_name") if leader_user else None,
             "content": (saved or {}).get("content", {}), "published": (saved or {}).get("published", False),
             "updated_by": (saved or {}).get("updated_by"), "updated_at": (saved or {}).get("updated_at")}
 
