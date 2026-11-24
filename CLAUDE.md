@@ -32,3 +32,4 @@ Read order: this file -> `AGENTS.md` (rules + API contract) -> `docs/PRODUCT_MAP
 - Git: no AI/Claude attribution lines in commits or PRs. No history rewrite or force-push without the owner's explicit yes.
 - Never type credentials into any site (even demo ones): ask the owner to log in, then read the page.
 - API docs (`/docs`) are off by default (`ENABLE_API_DOCS=1` for local use).
+- AI-LAST RULE (owner, 2026-11-24): every feature is built in plain Python and must work with AI switched off. AI is added last, only as an optional plug-in behind the AI gateway (docs/AI_BUDGET_PLAN.md), per office, with a human approving its output. No feature may depend on AI to function.
