@@ -25,3 +25,34 @@ Bottom tabs: **Home | Live | Social | History | Portfolio**. Header identity bar
 
 ## Not in this track
 Voice/IVR calls, real posting to platforms (stubbed until API keys), survey per-leader link (backend task, see `docs/REVIEW_2026-11-24.md` P0: do that before exposing survey results on the phone).
+
+## Parity inventory (owner order 2026-11-24: EVERYTHING on the web must exist on the phone)
+Definition of done for Track C: every row below is "Have". Public pages are opened/shared from the phone; they are not rebuilt natively.
+
+| Web component | Phone today | Task |
+|---|---|---|
+| LeaderIdentityBar, NavTabs, Header, Logo | Different / old look | C0, C2 |
+| LeaderHome, StaffHome, AdminHome | Partial, old look | C3, C4, C2 |
+| InboxList, ShareInbox, ShareModal, StoryRow | Have | restyle C0 |
+| NewsFeed, NewsCard, RefreshNews, ReportMenu | Have | + A3, A4 |
+| SidebarFilters | Missing | A3 |
+| OutletsModal | Missing | A4 |
+| UrgentAlertBanner, TopAlerts | Missing | A2, C5 |
+| SocialMediaView | Partial | A7 |
+| Watchlist, WatchlistActivity | Missing | C5 |
+| ComposeScreen (post studio) | Missing | C5 |
+| ProjectTracker | Missing | C5 |
+| WhatsAppUploads | Missing | C5 |
+| LeaderSuggestions (AI inbox) | Missing | C5 |
+| SurveyInbox (results) | Missing | C5 |
+| SurveyPage (public form) | n/a | C5: "Share survey link" button (copy/share the web URL) |
+| OfficialPortfolioPage | Missing | C6 |
+| PublicPortfolioPage, Portal | n/a | C6: "Public preview" opens the web URL |
+| LeaderVoiceAssistant | Missing | C7 |
+| BriefingDialog | Partial (staff editor only) | C3: leader read view |
+| RepresentativesDirectory | Missing | A5 |
+| AuditDialog | Missing | A6 (admin) |
+| AccountDialog, FeedbackDialog, LoginModal | Have | restyle C0 |
+| AdminUsersModal, TeamBoard, TeamModal | Have | restyle C0 |
+| Telugu/English UI | Missing | C1 |
+Phone-only today (keep): Letters & petitions with approval, Saved stories, push notifications.

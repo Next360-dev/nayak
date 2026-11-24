@@ -1,0 +1,51 @@
+# Environments & Secrets (DO NOT PUSH)
+.env
+*.env
+venv/
+.venv/
+env/
+backend/.env
+backend/venv/
+
+# Python Bytecode & Caches
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+backend/__pycache__/
+backend/.pytest_cache/
+
+# Pipeline Locks & Runtime Summaries
+pipeline.lock
+ingest_summary.json
+content_summary.json
+backend/pipeline.lock
+backend/ingest_summary.json
+backend/content_summary.json
+*.log
+
+# Large Archives & Local Files
+archive/
+*.zip
+*.png
+
+# Frontend Build & Dependencies
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+.vite/
+frontend/*.original
+
+# OS & IDE Junk
+.DS_Store
+.vscode/
+.idea/
+.claude/
+.playwright-mcp/
+
+# Local databases & Scratch files
+*.db
+*.sqlite
+*.sqlite3
+backend/scratch/
+scratch/

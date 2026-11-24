@@ -7,6 +7,7 @@ Visual reference: `frontend/src/components/ui/creator-dashboard.tsx` and `minist
 Mobile code map: screens `mobile/app/app/`, UI kit `mobile/app/src/ui/`, API `mobile/app/src/api/`, tokens `src/theme/index.ts`.
 
 ## Track A: bring the web app's features and UX to the phone (do first)
+(Superseded in part by `docs/MOBILE_PORT_SPEC.md` Track C, which follows the new web UI. Do C0-C2 first.)
 - [ ] A1 Telugu/English UI switch. Add `src/i18n/` (strings + `useLang`), store choice in SecureStore, switch in More. Translate Home, News, Inbox, Team, More first. Accept: toggle flips labels live; Telugu text has line-height >= 1.6 and is not clipped.
 - [ ] A2 Urgent alert banner. Horizontal ticker/strip of P1 stories on Home and News (`GET /api/news` priority 1). Tap opens the story. Accept: hidden when none.
 - [ ] A3 News filters sheet: district, constituency, priority, search, for statewide users (minister/admin). Scoped users stay pinned (server enforces). Accept: filters change the list; scoped users do not see district/constituency pickers.
