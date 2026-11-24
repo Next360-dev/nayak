@@ -4,10 +4,11 @@ import { space, surface, useTheme } from '../theme';
 
 type Chip = { key: string; label: string; count?: number };
 
+// Always used inside StickyBar, which already pads the sides: the strip is pulled back out so the chips line up with the rest.
 export function FilterChips({ options, value, onChange }: { options: Chip[]; value: string; onChange: (key: string) => void }) {
   const { c } = useTheme();
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: space.lg, gap: 8 }}>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -space.lg, flexGrow: 0 }} contentContainerStyle={{ paddingHorizontal: space.lg, gap: 8 }}>
       {options.map((o) => {
         const on = o.key === value;
         return (

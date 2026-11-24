@@ -77,6 +77,9 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     };
   }, [router]);
 
+  // Wait for the sign-in check before the navigator is built: the tabs depend on the role, and building them first made deep
+  // links (/news, /social, ...) fall back to Home on a fresh load.
+  if (loading) return <View style={{ flex: 1, backgroundColor: palette.light.bg }} />;
   return <>{children}</>;
 }
 

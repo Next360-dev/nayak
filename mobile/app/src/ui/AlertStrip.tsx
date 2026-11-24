@@ -11,8 +11,9 @@ export function AlertStrip() {
   const q = useQuery({ queryKey: ['top5'], queryFn: fetchTop5, refetchInterval: 60000 });
   const items = (q.data ?? []).filter((s) => s.title || s.headline).slice(0, 5);
   if (items.length === 0) return null;
+  // flexGrow: 0 keeps the strip one chip tall; a horizontal ScrollView otherwise grows to fill the column.
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.sm, paddingHorizontal: space.lg, paddingVertical: space.sm }} accessibilityLabel="Urgent alerts">
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, flexShrink: 0 }} contentContainerStyle={{ gap: space.sm, paddingHorizontal: space.lg, paddingVertical: space.sm, alignItems: 'center' }} accessibilityLabel="Urgent alerts">
       {items.map((s, i) => (
         <Pressable
           key={s.id ?? i}
