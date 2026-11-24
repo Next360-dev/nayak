@@ -34,3 +34,13 @@ export const uploadWhatsApp = (raw_text: string) => apiFetch('/api/whatsapp/uplo
 export const fetchWhatsApp = async () => (await apiFetch<{ uploads: WhatsAppUpload[] }>('/api/whatsapp/uploads')).uploads ?? [];
 
 export const fetchSurveyResults = async () => (await apiFetch<{ responses: SurveyResponse[] }>('/api/public-survey/results')).responses ?? [];
+
+export interface PortfolioContent {
+  full_name: string; avatar_url: string; title_en: string; title_te: string; biography_en: string; biography_te: string;
+  constituency_office: string; ministerial_office: string; official_email: string; helpline: string;
+  ministry_milestones: { title: string; date?: string | null; description: string }[];
+  constituency_projects: { title: string; status: string; location: string; description: string }[];
+}
+export interface PortfolioResponse { leader_username: string; leader_name?: string | null; content: Partial<PortfolioContent>; published: boolean; updated_by?: string | null; updated_at?: string | null }
+export const fetchPortfolio = () => apiFetch<PortfolioResponse>('/api/portfolio');
+export const savePortfolio = (c: PortfolioContent) => apiFetch('/api/portfolio', { method: 'PUT', body: JSON.stringify(c) });
