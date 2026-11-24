@@ -9,3 +9,4 @@
 - 2026-11-23 Demo hosting: backend on owner's PC, Cloudflare quick tunnel, Vercel rewrite in `frontend/vercel.json`. Why: no hosting budget yet; replace with a VPS.
 - 2026-11-23 Proprietary license, copyright Next360; no AI attribution in git history. Why: owner's decision.
 - 2026-11-24 Milestone order: phone parity with web first, then features B1-B8; OpenCode builds from `docs/MOBILE_MILESTONE.md`. Why: usage limits; keep the agent on architecture and review.
+- Identity bar (web LeaderIdentityBar + phone Hero): shown for every leader and every staff member; staff see their LEADER (same photo, party, place) from GET /api/portfolio (now also returns leader_title/party/constituency/district). Photo = Portfolio avatar_url; the old hard-coded Aadi portrait is only a fallback on the web until his office saves a photo. No party badge unless known.
